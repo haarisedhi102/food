@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ p.canonical_name }}{% endblock %}
+
+{% block content %}
+  <a href="/" class="text-sm text-slate-500 hover:text-slate-800">&larr; Shelves</a>
+
+  <h1 class="text-2xl font-semibold mt-2">{{ p.canonical_name }}</h1>
+  <div class="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+    {% if p.brand %}<span>{{ p.brand }}</span> · {% endif %}
+    {% if p.category %}<span>{{ p.category }}</span> · {% endif %}
+    {% if p.storage %}<span class="capitalize">{{ p.storage }}</span> · {% endif %}
+    {% if p.is_perishable %}<span>perishable</span>{% else %}<span>shelf-stable</span>{% endif %}
+  </div>
+
+  <div class="mt-3 flex flex-wrap gap-2 text-sm">
+    {% if p.shelf_life_days %}
+      <span class="px-2 py-1 rounded bg-slate-100">shelf life ≈ {{ p.shelf_life_days }} days</span>
+    {% endif %}
+    {% if p.shelf_life_source %}
+      <span class="px-2 py-1 rounded
+        {% if p.shelf_life_source == 'foodkeeper' %}bg-emerald-100 text-emerald-700
+        {% elif p.shelf_life_source == 'llm' %}bg-indigo-100 text-indigo-700
+        {% else %}bg-slate-100{% endif %}">
+        source: {{ p.shelf_life_source }}
+      </span>
+    {% endif %}
+    {% if p.foodkeeper_id %}
+      <span class="px-2 py-1 rounded bg-slate-100">FoodKeeper #{{ p.foodkeeper_id }}</span>
+    {% endif %}
+    <span class="px-2 py-1 rounded bg-slate-100">confidence {{ p.llm_confidence }}</span>
+    {% if p.review_state == 'needs_review' %}
+      <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">needs review</span>
+    {% endif %}
+  </div>
+
+  <section class="mt-6 grid gap-6 lg:grid-cols-2">
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Price history</h2>
+      {% if points %}
+        <canvas id="priceChart" height="160"></canvas>
+      {% else %}
+        <p class="text-sm text-slate-400">No priced purchases recorded.</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Purchases &amp; stock</h2>
+      <table class="w-full text-sm">
+        <tbody>
+        {% for s in stock %}
+          <tr class="border-b border-slate-100 last:border-0">
+            <td class="py-1">{{ s.acquired_on }}</td>
+            <td class="py-1 text-slate-500">{{ s.status }}</td>
+            <td class="py-1 text-slate-500">x{{ '%g'|format(s.remaining_qty) }}</td>
+            <td class="py-1 text-slate-500 text-right">{{ s.expires_on or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if not stock %}<p class="text-sm text-slate-400">Never stocked.</p>{% endif %}
+    </div>
+  </section>
+
+  {% if points %}
+  <script>
+    const points = {{ points | tojson }};
+    new Chart(document.getElementById('priceChart'), {
+      type: 'line',
+      data: {
+        labels: points.map(p => p.date),
+        datasets: [{
+          data: points.map(p => p.price),
+          borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.15)',
+          fill: true, tension: 0.3, pointRadius: 3,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: v => '$' + v.toFixed(2) } } }
+      }
+    });
+  </script>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Ask{% endblock %}
+
+{% block content %}
+  <h1 class="text-xl font-semibold">Ask about your kitchen</h1>
+  <p class="text-sm text-slate-500 mt-1">
+    e.g. &ldquo;what&rsquo;s about to go bad?&rdquo; · &ldquo;what can I cook tonight?&rdquo; ·
+    &ldquo;did I buy milk this week?&rdquo;
+  </p>
+
+  <form method="post" action="/chat" class="mt-4 flex gap-2">
+    <input name="question" value="{{ question }}" placeholder="Ask…"
+           class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    <button class="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700">Ask</button>
+  </form>
+
+  {% if answer %}
+    <div class="mt-4 bg-white rounded-xl border border-slate-200 p-4 text-sm whitespace-pre-wrap">{{ answer }}</div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Fridge &amp; Pantry{% endblock %}
+
+{% macro badge(days) %}
+  {% if days is none %}
+    <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">no expiry</span>
+  {% elif days < 0 %}
+    <span class="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600">{{ -days }}d past</span>
+  {% elif days <= 1 %}
+    <span class="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">{{ days }}d</span>
+  {% elif days <= 3 %}
+    <span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">{{ days }}d</span>
+  {% else %}
+    <span class="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">{{ days }}d</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro card(r) %}
+  <div class="flex items-start justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">
+    <div class="min-w-0">
+      <a href="/item/{{ r.product_id }}" class="text-sm hover:underline truncate block">
+        {{ r.canonical_name }}
+      </a>
+      <div class="text-[11px] text-slate-400">
+        x{{ '%g'|format(r.remaining_qty) }}{% if r.expires_on %} · {{ r.expires_on }}{% endif %}
+      </div>
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+      {{ badge(r.days_left) }}
+      <form method="post" action="/inventory/{{ r.id }}/status">
+        <input type="hidden" name="status" value="consumed">
+        <button class="text-[11px] px-1.5 py-0.5 rounded hover:bg-emerald-50 text-emerald-700" title="Used it">✓</button>
+      </form>
+      <form method="post" action="/inventory/{{ r.id }}/status">
+        <input type="hidden" name="status" value="tossed">
+        <button class="text-[11px] px-1.5 py-0.5 rounded hover:bg-red-50 text-red-600" title="Tossed it">✕</button>
+      </form>
+    </div>
+  </div>
+{% endmacro %}
+
+{% block content %}
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Expiring soon</h2>
+    {% if soon %}
+      <div class="flex flex-wrap gap-2">
+        {% for r in soon %}
+          <a href="/item/{{ r.product_id }}"
+             class="px-3 py-2 rounded-lg bg-white border border-amber-200 shadow-sm text-sm flex items-center gap-2">
+            {{ r.canonical_name }} {{ badge(r.days_left) }}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm text-slate-400">Nothing expiring in the next 3 days. 👌</p>
+    {% endif %}
+  </section>
+
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    {% for loc in locations %}
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+        <h3 class="font-semibold text-sm mb-2 flex items-center justify-between">
+          <span class="capitalize">{{ loc }}</span>
+          <span class="text-xs text-slate-400">{{ counts[loc] }}</span>
+        </h3>
+        {% if shelves[loc] %}
+          {% for r in shelves[loc] %}{{ card(r) }}{% endfor %}
+        {% else %}
+          <p class="text-xs text-slate-400 py-2">empty</p>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+
+  <p class="mt-6 text-sm">
+    <a class="text-slate-500 hover:text-slate-800" href="/?archived={{ 0 if archived else 1 }}">
+      {{ 'Hide archived' if archived else 'Show archived' }}
+    </a>
+  </p>
+  {% if archived and archived_rows %}
+    <section class="mt-3 bg-white rounded-xl border border-slate-200 p-3">
+      <h3 class="font-semibold text-sm mb-2 text-slate-500">Archived ({{ archived_rows|length }})</h3>
+      <div class="grid gap-1 md:grid-cols-3">
+        {% for r in archived_rows %}
+          <div class="text-xs text-slate-400 flex justify-between gap-2">
+            <span class="truncate">{{ r.canonical_name }}</span>
+            <span>{{ r.status }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
