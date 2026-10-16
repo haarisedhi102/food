@@ -7,6 +7,8 @@ import random
 import time
 from typing import Any
 
+from tenacity import retry, retry_if_result, stop_after_attempt, wait_exponential
+
 from . import browser as b
 
 BASE = "https://www.kroger.com"
@@ -82,6 +84,59 @@ def _has_details(res: dict) -> bool:
     return isinstance(node, list)
 
 
+# Retry policy for details batches. Module-level so tests can swap in wait_none().
+WAIT = wait_exponential(multiplier=1, min=2, max=8)
+
+
+def _should_retry(res: dict) -> bool:
+    """Retry only when the response is neither itemized nor an explicit rate-limit signal."""
+    return not _has_details(res) and not _is_rate_limited(res)
+
+
+def _reorigin(page: b.Page, attempt_number: int) -> None:
+    """Send the SPA back to mypurchases so the next fetch stays same-origin."""
+    page.goto(f"{BASE}/mypurchases", wait_until="domcontentloaded")
+    page.wait_for_timeout(2000 + (attempt_number - 1) * 2000)
+
+
+def _before_sleep(page: b.Page, label: str):
+    def _cb(state) -> None:
+        res = state.outcome.result() if state.outcome else {}
+        print(
+            f"    retry {state.attempt_number}/{MAX_ATTEMPTS - 1} {label} "
+            f"(status={res.get('status')}) url={page.url}"
+        )
+        _reorigin(page, state.attempt_number)
+
+    return _cb
+
+
+def _last_result(state) -> dict:
+    try:
+        return state.outcome.result()
+    except Exception:  # noqa: BLE001 - surface the last transport failure as the result
+        return {"status": -1, "ok": False, "json": None, "text": ""}
+
+
+def _fetch_details(page: b.Page, body: str, n: int, total: int) -> dict:
+    """Fetch one details batch, retrying transient failures with exponential backoff."""
+
+    @retry(
+        stop=stop_after_attempt(MAX_ATTEMPTS),
+        wait=WAIT,
+        retry=retry_if_result(_should_retry),
+        retry_error_callback=_last_result,
+        before_sleep=_before_sleep(page, f"batch {n}/{total}"),
+    )
+    def _attempt() -> dict:
+        _assert_origin(page)
+        return b.page_fetch(
+            page, DETAILS_URL, method="POST", headers=DETAILS_HEADERS, body=body
+        )
+
+    return _attempt()
+
+
 def pull(
     lookback_days: int,
     cdp: str | None = None,
@@ -129,22 +184,7 @@ def pull(
         print(f"    itemizing {len(keys)} receipts in {len(batches)} batches")
 
         for n, batch in enumerate(batches, 1):
-            body = _body_for(batch)
-            res: dict = {"status": -1, "ok": False, "json": None, "text": ""}
-            for attempt in range(MAX_ATTEMPTS):
-                _assert_origin(page)
-                res = b.page_fetch(
-                    page, DETAILS_URL, method="POST", headers=DETAILS_HEADERS, body=body
-                )
-                if _has_details(res) or _is_rate_limited(res):
-                    break
-                print(
-                    f"    retry {attempt + 1}/{MAX_ATTEMPTS - 1} batch {n} "
-                    f"(status={res['status']}) url={page.url}"
-                )
-                page.goto(f"{BASE}/mypurchases", wait_until="domcontentloaded")
-                page.wait_for_timeout(2000 + attempt * 2000)
-
+            res = _fetch_details(page, _body_for(batch), n, len(batches))
             for k in batch:
                 # store the whole response so failures are diagnosable from the archive
                 out["details"][k] = res
