@@ -70,14 +70,27 @@ def calls_today(conn: sqlite3.Connection, purpose: str | None = None) -> int:
     return row["n"]
 
 
-def _model(model: str, temperature: float) -> ChatOpenAI:
+def chat_model(model: str | None = None, temperature: float = 0.0) -> ChatOpenAI:
+    """A bare ChatOpenAI. For callers that need a chat model rather than a chain (agents,
+    tool-calling)."""
+    if not config.CMD_API_KEY:
+        raise LLMError(
+            "CMD_API_KEY is not set. Create one in Command Code Studio -> API keys and put it "
+            "in .env as CMD_API_KEY=..."
+        )
     return ChatOpenAI(
-        model=model,
+        model=model or config.MODEL,
         api_key=config.CMD_API_KEY,
         base_url=config.BASE_URL,
         temperature=temperature,
         max_retries=2,
-    ).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+    )
+
+
+def _model(model: str, temperature: float) -> ChatOpenAI:
+    return chat_model(model, temperature).with_retry(
+        stop_after_attempt=3, wait_exponential_jitter=True
+    )
 
 
 def _chain(models: list[str], temperature: float):

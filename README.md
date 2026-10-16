@@ -52,7 +52,7 @@ uv run food sync-ref                  # load the FoodKeeper shelf-life table (on
 uv run food embed-ref                 # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
 uv run food sync --retailer costco    # log in when Chrome opens (MFA)
 uv run food sync --retailer kroger
-uv run food classify                  # canonicalize new items (batched, parallel)
+uv run food classify                  # canonicalize + resolve low-confidence shelf life
 uv run food stock                     # build/refresh the fridge & pantry
 uv run food status                    # counts, review queue, LLM calls today
 uv run food digest                    # "use it or lose it" suggestions
@@ -69,7 +69,8 @@ Refresh loop: `food sync && food classify && food stock`.
 | `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) matching |
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
-| `classify` | LLM canonicalization of unmapped items (parallel, cached by `item_key`) |
+| `classify` | Canonicalize unmapped items (parallel, cached) and resolve low-confidence shelf life |
+| `enrich` | Backfill: re-resolve the needs-review queue with the web-search agent |
 | `stock` | Build/refresh inventory and show what's expiring |
 | `status` | Counts, needs-review, per-purpose LLM usage |
 | `review` | List the needs-review queue |
@@ -102,6 +103,11 @@ Refresh loop: `food sync && food classify && food stock`.
   `.with_retry` and chained with `.with_fallbacks`, classification batches fan out through
   `.batch(max_concurrency=…)`, and FoodKeeper retrieval is an `EnsembleRetriever` (BM25 +
   embeddings).
+- **Low confidence.** Rather than parking uncertain items in the review queue, `classify`
+  finishes by handing them to a tool-calling agent that answers from its own knowledge and,
+  when it needs to, searches the web for shelf-life guidance. Resolved items are written back
+  as `shelf_life_source = web` (and any built inventory rows are re-expiry'd); genuinely
+  unresolved ones stay in review. `food enrich` re-runs just this pass.
 - **Consumption.** Receipts say what you bought, not what's left. Inventory decays: rows
   expire at `acquired_on + shelf_life_days`, repeat purchases decrement oldest-first, and
   long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it
