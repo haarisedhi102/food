@@ -45,6 +45,21 @@ endpoint `https://api.commandcode.ai/provider/v1`.
 `embed-ref` builds a semantic index and matching becomes hybrid (keyword + embeddings). The
 default embedding model is a cheap paid one (`baai/bge-base-en-v1.5`).
 
+### Tracing (optional)
+
+Watch every LLM call (canonicalization, matching, chat) in a local
+[Arize Phoenix](https://arize.com/docs/phoenix) UI. Off unless `PHOENIX_ENABLED=1`:
+
+```bash
+uv sync --group tracing               # one-time: Phoenix server + OpenInference instrumentors
+uv run phoenix serve                  # UI at http://localhost:6006
+PHOENIX_ENABLED=1 uv run food classify
+```
+
+`PHOENIX_PROJECT` names the project (default `food`); set `PHOENIX_COLLECTOR_ENDPOINT` to
+ship to Phoenix Cloud instead of the local server. Instrumentation is automatic, so both
+the OpenAI client and the LangChain stack are traced.
+
 ## Use
 
 ```bash

@@ -23,6 +23,14 @@ food = "food.cli:app"
 
 [dependency-groups]
 dev = ["pytest>=8.3"]
+tracing = [
+    "arize-phoenix>=4.0",
+    "arize-phoenix-otel>=0.6",
+    # arize-phoenix's strawberry-graphql breaks on graphql-core 3.3.0
+    "graphql-core<3.3",
+    "openinference-instrumentation-langchain>=0.1",
+    "openinference-instrumentation-openai>=0.1",
+]
 
 [build-system]
 requires = ["hatchling"]

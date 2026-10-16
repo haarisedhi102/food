@@ -40,6 +40,12 @@ EMBED_BASE_URL = os.getenv("FOOD_EMBED_BASE_URL", "https://openrouter.ai/api/v1"
 EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "baai/bge-base-en-v1.5")
 EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
 
+# Optional observability: Arize Phoenix. Needs `uv sync --group tracing`; off by default.
+PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "").lower() in ("1", "true", "yes")
+PHOENIX_PROJECT = os.getenv("PHOENIX_PROJECT", "food")
+# Blank means the local Phoenix (http://localhost:6006); set for Phoenix Cloud.
+PHOENIX_ENDPOINT = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "")
+
 # Ingestion
 COSTCO_LOOKBACK_DAYS = int(os.getenv("FOOD_COSTCO_LOOKBACK_DAYS", "90"))
 KROGER_LOOKBACK_DAYS = int(os.getenv("FOOD_KROGER_LOOKBACK_DAYS", "90"))
