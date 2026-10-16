@@ -54,7 +54,7 @@ uv run food sync --retailer costco    # log in when Chrome opens (MFA)
 uv run food sync --retailer kroger
 uv run food classify                  # canonicalize + ground remaining shelf life
 uv run food stock                     # build/refresh the fridge & pantry
-uv run food status                    # counts, review queue, LLM calls today
+uv run food status                    # counts, LLM calls today
 uv run food digest                    # "use it or lose it" suggestions
 uv run food serve                     # dashboard at http://127.0.0.1:8000
 ```
@@ -71,8 +71,7 @@ Refresh loop: `food sync && food classify && food stock`.
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
 | `classify` | Canonicalize unmapped items (parallel, cached), then ground remaining shelf life |
 | `stock` | Build/refresh inventory and show what's expiring |
-| `status` | Counts, needs-review, per-purpose LLM usage |
-| `review` | List the needs-review queue |
+| `status` | Counts and per-purpose LLM usage |
 | `digest` | LLM "use it or lose it" plan |
 | `serve` | Dashboard (binds `127.0.0.1`) |
 | `probe-kroger` | Diagnostic for the Kroger details endpoint |

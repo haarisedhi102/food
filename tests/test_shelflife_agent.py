@@ -10,12 +10,12 @@ def _mem():
     return conn
 
 
-def _seed(conn, perishable=1, shelf_life=None, review="ok"):
+def _seed(conn, perishable=1, shelf_life=None):
     conn.execute(
         """INSERT INTO products (canonical_name, category, is_food, is_perishable,
-                                 shelf_life_days, review_state)
-           VALUES ('Mystery Greens', 'Produce', 1, ?, ?, ?)""",
-        (perishable, shelf_life, review),
+                                 shelf_life_days)
+           VALUES ('Mystery Greens', 'Produce', 1, ?, ?)""",
+        (perishable, shelf_life),
     )
     pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
     conn.execute(

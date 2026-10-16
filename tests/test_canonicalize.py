@@ -88,11 +88,12 @@ def test_canonicalize_stores_and_falls_back(monkeypatch):
     milk = conn.execute("SELECT * FROM products WHERE canonical_name = 'Whole Milk'").fetchone()
     assert milk["shelf_life_days"] == 7
     assert milk["shelf_life_source"] == "llm"
-    assert milk["review_state"] == "ok"
 
-    # the unresolved one landed in the review queue with a product row
-    nr = conn.execute("SELECT COUNT(*) n FROM products WHERE review_state = 'needs_review'").fetchone()
-    assert nr["n"] == 1
+    # the unresolved one still got a placeholder product row (no review queue)
+    placeholder = conn.execute(
+        "SELECT COUNT(*) n FROM products WHERE canonical_name = 'KS ORG A2 PR'"
+    ).fetchone()
+    assert placeholder["n"] == 1
 
 
 def test_foodkeeper_match_overrides_llm_estimate(monkeypatch):

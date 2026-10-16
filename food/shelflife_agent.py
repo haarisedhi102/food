@@ -111,8 +111,9 @@ def _apply(conn: sqlite3.Connection, product_id: int, guess: ShelfLifeGuess) -> 
 
 
 def resolve_missing(conn: sqlite3.Connection, limit: int | None = None) -> dict[str, int]:
-    """Fill shelf life for perishables the pipeline couldn't ground. The agent's answer is
-    trusted — nothing is parked for review."""
+    """Make sure every perishable has a shelf life. Anything the pipeline couldn't ground
+    gets a best estimate from the agent, whose answer is trusted — nothing is parked for
+    review. Non-perishable items are allowed to have no expiry."""
     sql = """
         SELECT id, canonical_name, category
         FROM products

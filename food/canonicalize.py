@@ -39,19 +39,20 @@ For each item return exactly these fields:
 
 Rules:
 - Write canonical_name as the plain, readable product name (expand abbreviations).
-- Give shelf_life_days from your own knowledge for perishable items.
-- Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false and
-  is_perishable=false.
-- Items that do not spoil quickly (coffee, rice, canned goods, spices, oil) are
-  is_perishable=false.
+- If is_perishable is true, shelf_life_days is REQUIRED (whole days, never null) — give
+  your best estimate.
+- Non-perishable items (coffee, rice, canned goods, spices, oil) may set shelf_life_days
+  null; they do not expire.
+- Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false,
+  is_perishable=false, and shelf_life_days null.
 - If you are unsure, lower confidence rather than guessing wildly.
 
 Examples:
-  "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-  "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
-  "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-  "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","confidence":0.6}
-  "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","confidence":0.7}
+  "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":7,"confidence":0.8}
+  "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.75}
+  "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":21,"confidence":0.8}
+  "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.6}
+  "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","shelf_life_days":180,"confidence":0.7}
 
 Respond with ONLY JSON: {"items": [ ... ]}"""
 
@@ -108,14 +109,13 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
     # in `_ground`, once the whole batch is stored, so it can be done in one rerank call.
     days = ci.shelf_life_days
     source = "llm" if days is not None else None
-    needs_review = ci.confidence < 0.4
 
     cur = conn.execute(
         """INSERT INTO products
            (canonical_name, brand, category, pkg_size, unit, is_food, is_perishable, storage,
             shelf_life_days, shelf_life_days_opened, shelf_life_source, foodkeeper_id,
-            review_state, llm_model, llm_confidence, classified_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))""",
+            llm_model, llm_confidence, classified_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))""",
         (
             ci.canonical_name,
             ci.brand,
@@ -129,7 +129,6 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
             ci.shelf_life_days_opened,
             source,
             None,
-            "needs_review" if needs_review else "ok",
             llm.config.MODEL,
             ci.confidence,
         ),
@@ -164,10 +163,10 @@ def _ground(conn: sqlite3.Connection, stored: list[tuple[int, str, str]]) -> Non
 
 
 def _fallback(conn: sqlite3.Connection, retailer: str, item: dict) -> None:
-    """A model we couldn't parse: keep the pipeline moving via the manual review queue."""
+    """A model output we couldn't parse: keep the pipeline moving with a placeholder row."""
     cur = conn.execute(
-        """INSERT INTO products (canonical_name, is_food, is_perishable, review_state, llm_confidence)
-           VALUES (?, 1, 0, 'needs_review', 0.0)""",
+        """INSERT INTO products (canonical_name, is_food, is_perishable, llm_confidence)
+           VALUES (?, 1, 0, 0.0)""",
         (item.get("raw_description") or item["item_key"],),
     )
     conn.execute(
@@ -252,10 +251,3 @@ def canonicalize(
         conn.commit()
 
     return stats
-
-
-def needs_review(conn: sqlite3.Connection) -> int:
-    row = conn.execute(
-        "SELECT COUNT(*) n FROM products WHERE review_state = 'needs_review'"
-    ).fetchone()
-    return row["n"]
