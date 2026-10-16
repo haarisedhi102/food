@@ -2,19 +2,35 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
-class ProvisionalItem(BaseModel):
-    """Structural, retailer-specific record before the LLM reconciles it."""
+class NormalizedItem(BaseModel):
+    """One retailer line item after the structural adapter has reconciled its shape."""
 
-    retailer: str
-    item_key: str
     raw_description: str
+    item_key: str
     raw_pkg_size: str | None = None
     quantity: float = 1.0
     unit_price_cents: int | None = None
     line_total_cents: int | None = None
+
+
+class NormalizedReceipt(BaseModel):
+    """A receipt envelope produced by a per-retailer structural adapter.
+
+    `raw` keeps the untouched upstream payload so a shifted field needs a re-normalize,
+    not a re-scrape.
+    """
+
+    external_id: str
+    purchased_on: str | None = None
+    store: str | None = None
+    total_cents: int | None = None
+    items: list[NormalizedItem] = Field(default_factory=list)
+    raw: Any = None
 
 
 class CanonicalItem(BaseModel):

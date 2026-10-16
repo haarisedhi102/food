@@ -12,16 +12,16 @@ def test_costco_normalize_drops_discounts_and_keys_on_item_number():
 
     assert len(receipts) == 1
     r = receipts[0]
-    assert r["purchased_on"] and len(r["purchased_on"]) == 10
-    assert r["items"], "expected at least one item"
+    assert r.purchased_on and len(r.purchased_on) == 10
+    assert r.items, "expected at least one item"
 
-    for item in r["items"]:
-        assert not item["raw_description"].startswith("/")  # discount lines removed
-        assert item["item_key"]  # keyed on itemNumber (or a described fallback)
+    for item in r.items:
+        assert not item.raw_description.startswith("/")  # discount lines removed
+        assert item.item_key  # keyed on itemNumber (or a described fallback)
 
     # the fixture contains a "/ <item>" discount line; it must not survive
     raw_items = raw["data"]["receiptsWithCounts"]["receipts"][0]["itemArray"]
-    assert len(r["items"]) < len(raw_items)
+    assert len(r.items) < len(raw_items)
 
 
 def test_kroger_attributes_only_the_matching_receipt():
@@ -37,10 +37,10 @@ def test_kroger_attributes_only_the_matching_receipt():
     batch = raw["details"][next(iter(raw["details"]))]["json"]["data"]["purchaseHistoryDetails"]
     total_in_batch = sum(len(x.get("items") or []) for x in batch)
     matching = next(
-        x for x in batch if (x.get("purchaseId") or {}).get("receiptId") == r["external_id"]
+        x for x in batch if (x.get("purchaseId") or {}).get("receiptId") == r.external_id
     )
 
-    assert len(r["items"]) == len(matching["items"])
-    assert len(r["items"]) < total_in_batch, "items leaked from other receipts in the batch"
-    for item in r["items"]:
-        assert item["item_key"]  # keyed on upc
+    assert len(r.items) == len(matching["items"])
+    assert len(r.items) < total_in_batch, "items leaked from other receipts in the batch"
+    for item in r.items:
+        assert item.item_key  # keyed on upc
