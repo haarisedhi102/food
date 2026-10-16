@@ -153,7 +153,8 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
 
 
 def _ground(conn: sqlite3.Connection, stored: list[tuple[int, str, str]]) -> None:
-    """Ground stored products in FoodKeeper: hybrid shortlist per name, one batched rerank."""
+    """Ground stored food products in FoodKeeper: hybrid shortlist per name, one batched
+    rerank. Non-food items are never passed here — they have no shelf life to ground."""
     if not stored:
         return
     picks = reference.match_batch(conn, [name for _, name, _ in stored])
@@ -221,7 +222,8 @@ def _apply(
             failed.append(item)
             continue
         pid = _store(conn, item["retailer"], item, ci)
-        stored.append((pid, ci.canonical_name, ci.storage or "fridge"))
+        if ci.is_food:
+            stored.append((pid, ci.canonical_name, ci.storage or "fridge"))
         stats["ok"] += 1
     conn.commit()
     _ground(conn, stored)
