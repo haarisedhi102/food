@@ -164,8 +164,8 @@ def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
 
 @app.command("classify")
 def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
-    """Canonicalize unmapped receipt items, then ground any remaining shelf life."""
-    from . import canonicalize, llm, shelflife_agent
+    """Canonicalize unmapped receipt items, resolving each item's shelf life in one pass."""
+    from . import canonicalize, llm
 
     conn = _conn()
     try:
@@ -176,17 +176,9 @@ def classify(limit: Optional[int] = typer.Option(None, help="Max items to canoni
         raise typer.Exit(1)
     console.print(
         f"[green]canonicalized[/] {stats['ok']} items "
-        f"({stats['batches']} batches, {stats['fallback']} unparsed)"
+        f"({stats['batches']} batches, {stats['fallback']} unparsed); "
+        f"[green]shelf life[/] {stats['resolved']} resolved"
     )
-    if config.CMD_API_KEY:
-        try:
-            g = shelflife_agent.resolve_missing(conn)
-            console.print(
-                f"[green]shelf life[/] {g['resolved']} grounded by the agent, "
-                f"{g['unresolved']} unresolved"
-            )
-        except llm.LLMError as exc:  # classification already succeeded; this is a bonus
-            console.print(f"[yellow]shelf-life agent skipped[/]: {exc}")
     conn.close()
 
 

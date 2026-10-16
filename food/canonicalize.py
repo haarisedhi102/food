@@ -4,10 +4,11 @@ Both retailers flow through a single prompt and a single output schema, so their
 differences disappear at the boundary. Results are cached per (retailer, item_key) in
 `item_map`, so each product is canonicalized exactly once.
 
-Naming and reference matching are separate stages: this module decides what an item *is*
-(canonical name, category, storage, and a shelf-life estimate); `reference.match` then
-grounds that readable name in a FoodKeeper row. Matching the canonical name instead of the
-raw receipt code is worth ~0.1 recall@1 — see `bench/retrieval_bench.py`.
+Naming and shelf-life resolution are separate stages: this module decides what an item *is*
+(canonical name, category, storage, and a shelf-life estimate); `resolve.resolve_batch` then
+grounds that readable name in FoodKeeper (or the web) in one batched agent run. Matching the
+canonical name instead of the raw receipt code is worth ~0.1 recall@1 — see
+`bench/retrieval_bench.py`.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from typing import Any
 from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
-from . import config, db, llm, reference, shelflife
+from . import config, db, llm, resolve
 from .models import CanonicalItem
 
 BATCH_SIZE = 30
@@ -34,36 +35,34 @@ For each item return exactly these fields:
   unit ("count" | "weight" | "volume" or null),
   is_food (bool), is_perishable (bool),
   storage ("fridge" | "freezer" | "pantry" | "counter"),
-  shelf_life_days (int or null), shelf_life_days_opened (int or null),
   confidence (0.0-1.0).
+
+Shelf life is resolved in a later stage — do not estimate it here.
 
 Rules:
 - Write canonical_name as the plain, readable product name (expand abbreviations).
-- If is_perishable is true, shelf_life_days is REQUIRED (whole days, never null) — give
-  your best estimate.
-- Non-perishable items (coffee, rice, canned goods, spices, oil) may set shelf_life_days
-  null; they do not expire.
 - Fresh bakery, deli, refrigerated, meat, seafood, produce, dairy and prepared foods are
-  is_perishable=true with a shelf life, even when a shelf-stable version of the product
-  exists (dry pasta and packaged cookies keep for months; fresh bread, naan, and
-  refrigerated crusts do not).
+  is_perishable=true, even when a shelf-stable version of the product exists (dry pasta and
+  packaged cookies are shelf-stable; fresh bread, naan and refrigerated crusts are not).
+- Non-perishable items (coffee, rice, canned goods, spices, oil) are is_perishable=false;
+  they do not expire.
 - Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false,
-  is_perishable=false, and shelf_life_days null.
+  is_perishable=false.
 - If you are unsure, lower confidence rather than guessing wildly.
 
 Examples:
-  "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":7,"confidence":0.8}
-  "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.75}
-  "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":21,"confidence":0.8}
-  "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.6}
-  "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","shelf_life_days":180,"confidence":0.7}
-  "WW SANDWICH BREAD" -> {"canonical_name":"Whole Wheat Sandwich Bread","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"counter","shelf_life_days":7,"confidence":0.8}
-  "CAULIFLOWER CRUST" -> {"canonical_name":"Cauliflower Pizza Crusts","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":21,"confidence":0.7}
-  "NAAN DIPPERS"      -> {"canonical_name":"Naan Dippers","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"pantry","shelf_life_days":5,"confidence":0.75}
-  "ORG ORANGE JUICE"  -> {"canonical_name":"Orange Juice","brand":null,"category":"Beverages","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":10,"confidence":0.8}
-  "PACKAGED COOKIES"  -> {"canonical_name":"Packaged Cookies","brand":null,"category":"Snacks","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.75}
-  "JASMINE RICE"      -> {"canonical_name":"Jasmine Rice","brand":null,"category":"Pantry Staples","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.85}
-  "CLOVER HONEY"      -> {"canonical_name":"Honey","brand":null,"category":"Condiments & Sauces","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.85}
+  "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+  "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
+  "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+  "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","confidence":0.6}
+  "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","confidence":0.7}
+  "WW SANDWICH BREAD" -> {"canonical_name":"Whole Wheat Sandwich Bread","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"counter","confidence":0.8}
+  "CAULIFLOWER CRUST" -> {"canonical_name":"Cauliflower Pizza Crusts","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.7}
+  "NAAN DIPPERS"      -> {"canonical_name":"Naan Dippers","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"pantry","confidence":0.75}
+  "ORG ORANGE JUICE"  -> {"canonical_name":"Orange Juice","brand":null,"category":"Beverages","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+  "PACKAGED COOKIES"  -> {"canonical_name":"Packaged Cookies","brand":null,"category":"Snacks","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
+  "JASMINE RICE"      -> {"canonical_name":"Jasmine Rice","brand":null,"category":"Pantry Staples","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
+  "CLOVER HONEY"      -> {"canonical_name":"Honey","brand":null,"category":"Condiments & Sauces","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
 
 Respond with ONLY JSON: {"items": [ ... ]}"""
 
@@ -116,17 +115,13 @@ def _build_user(items: list[dict]) -> str:
 
 
 def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> int:
-    # Shelf life starts as the model's estimate; FoodKeeper grounding happens afterwards
-    # in `_ground`, once the whole batch is stored, so it can be done in one rerank call.
-    days = ci.shelf_life_days
-    source = "llm" if days is not None else None
-
+    # Shelf life is not estimated here — `resolve` fills it for the whole batch afterwards.
     cur = conn.execute(
         """INSERT INTO products
            (canonical_name, brand, category, pkg_size, unit, is_food, is_perishable, storage,
             shelf_life_days, shelf_life_days_opened, shelf_life_source, foodkeeper_id,
             llm_model, llm_confidence, classified_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))""",
+           VALUES (?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,?,?,datetime('now'))""",
         (
             ci.canonical_name,
             ci.brand,
@@ -136,10 +131,6 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
             int(ci.is_food),
             int(ci.is_perishable),
             ci.storage,
-            days,
-            ci.shelf_life_days_opened,
-            source,
-            None,
             llm.config.MODEL,
             ci.confidence,
         ),
@@ -150,28 +141,6 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
         (retailer, item["item_key"], item.get("raw_description"), cur.lastrowid),
     )
     return cur.lastrowid
-
-
-def _ground(conn: sqlite3.Connection, stored: list[tuple[int, str, str]]) -> None:
-    """Ground stored food products in FoodKeeper: hybrid shortlist per name, one batched
-    rerank. Non-food items are never passed here — they have no shelf life to ground."""
-    if not stored:
-        return
-    picks = reference.match_batch(conn, [name for _, name, _ in stored])
-    for pid, name, storage in stored:
-        fid = picks.get(name)
-        if fid is None:
-            continue
-        days = shelflife.days_for(conn, fid, storage)
-        if days is None:
-            continue
-        conn.execute(
-            """UPDATE products
-               SET foodkeeper_id = ?, shelf_life_days = ?, shelf_life_source = 'foodkeeper'
-               WHERE id = ?""",
-            (fid, days, pid),
-        )
-    conn.commit()
 
 
 def _fallback(conn: sqlite3.Connection, retailer: str, item: dict) -> None:
@@ -210,7 +179,7 @@ def _apply(
             by_key[str(raw["item_key"])] = raw
 
     failed = []
-    stored: list[tuple[int, str, str]] = []
+    stored: list[dict] = []
     for item in batch:
         raw = by_key.get(str(item["item_key"]))
         if raw is None:
@@ -223,10 +192,18 @@ def _apply(
             continue
         pid = _store(conn, item["retailer"], item, ci)
         if ci.is_food:
-            stored.append((pid, ci.canonical_name, ci.storage or "fridge"))
+            stored.append(
+                {
+                    "id": pid,
+                    "name": ci.canonical_name,
+                    "category": ci.category,
+                    "storage": ci.storage,
+                }
+            )
         stats["ok"] += 1
     conn.commit()
-    _ground(conn, stored)
+    if stored:
+        stats["resolved"] += resolve.apply(conn, stored, resolve.resolve_batch(conn, stored))
     return failed
 
 
@@ -236,7 +213,7 @@ def canonicalize(
     """Canonicalize pending items. Batches run concurrently; each product is cached in
     `item_map`, so re-running only touches items that failed."""
     workers = workers or config.CLASSIFY_WORKERS
-    stats = {"batches": 0, "ok": 0, "fallback": 0}
+    stats = {"batches": 0, "ok": 0, "fallback": 0, "resolved": 0}
     items = pending(conn, limit)
     if not items:
         return stats
