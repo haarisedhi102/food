@@ -41,10 +41,15 @@ cp .env.example .env                  # then set CMD_API_KEY
 `CMD_API_KEY` comes from Command Code Studio → API keys, and is used against the provider
 endpoint `https://api.commandcode.ai/provider/v1`.
 
+`OPENROUTER_API_KEY` is optional. Without it, FoodKeeper matching is keyword-only; with it,
+`embed-ref` builds a semantic index and matching becomes hybrid (keyword + embeddings). The
+default embedding model is free.
+
 ## Use
 
 ```bash
 uv run food sync-ref                  # load the FoodKeeper shelf-life table (once)
+uv run food embed-ref                 # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
 uv run food sync --retailer costco    # log in when Chrome opens (MFA)
 uv run food sync --retailer kroger
 uv run food classify                  # canonicalize new items (batched, parallel)
@@ -61,6 +66,7 @@ Refresh loop: `food sync && food classify && food stock`.
 | Command | What it does |
 |---|---|
 | `sync-ref` | (Re)load USDA FoodKeeper into `shelf_life_ref` |
+| `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) matching |
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
 | `classify` | LLM canonicalization of unmapped items (parallel, cached by `item_key`) |
@@ -81,11 +87,13 @@ Refresh loop: `food sync && food classify && food stock`.
   `atlas` purchase-history endpoints. Raw JSON is archived in `data/imports/`, so a changed
   field needs a re-normalize, not a re-scrape. `food import` is the escape hatch when a
   scraper breaks.
-- **Shelf life.** USDA FoodKeeper (public domain) is the reference table. The LLM *maps* an
-  item to a FoodKeeper row; when there's a clear match the table value wins, otherwise the
-  LLM supplies an estimate in the same shape. Units are converted from FoodKeeper's
-  `*_Metric` (Weeks/Months/…), and qualitative values ("Package use-by date") fall through to
-  the LLM. Each product records `shelf_life_source` (foodkeeper / llm / manual).
+- **Shelf life.** USDA FoodKeeper (public domain) is the reference table. Matching is split
+  out from canonicalization: `reference.py` retrieves candidate rows with hybrid keyword +
+  semantic search (embeddings from OpenRouter, fused by reciprocal rank), and the LLM maps the
+  item onto them. When there's a clear match the table value wins, otherwise the LLM supplies
+  an estimate in the same shape. Units are converted from FoodKeeper's `*_Metric`
+  (Weeks/Months/…), and qualitative values ("Package use-by date") fall through to the LLM.
+  Each product records `shelf_life_source` (foodkeeper / llm / manual).
 - **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` (won a head-to-head benchmark:
   30/30 valid items in 52s vs 89s and 121s) with cheaper/free fallbacks. Batches run 6-wide.
   Chat and digest are cached and budgeted separately so they can't starve classification.

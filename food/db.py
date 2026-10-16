@@ -110,6 +110,23 @@ CREATE TABLE IF NOT EXISTS llm_calls (
 );
 """
 
+# Forward-only migrations applied after the v1 baseline SCHEMA. Each entry is
+# (target_version, script); applied in order for any db sitting below target_version.
+MIGRATIONS: list[tuple[int, str]] = [
+    (
+        2,
+        """
+        CREATE TABLE IF NOT EXISTS shelf_life_embedding (
+            foodkeeper_id INTEGER PRIMARY KEY REFERENCES shelf_life_ref(foodkeeper_id) ON DELETE CASCADE,
+            model         TEXT NOT NULL,
+            dim           INTEGER NOT NULL,
+            vector        BLOB NOT NULL,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        """,
+    ),
+]
+
 
 def connect(db_path: Path | None = None) -> sqlite3.Connection:
     config.ensure_dirs()
@@ -126,7 +143,13 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
-    cur = conn.execute("SELECT version FROM schema_version")
-    if cur.fetchone() is None:
+    row = conn.execute("SELECT version FROM schema_version").fetchone()
+    version = row["version"] if row else 0
+    if row is None:
         conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        version = 1
+    for target, script in MIGRATIONS:
+        if target > version:
+            conn.executescript(script)
+            conn.execute("UPDATE schema_version SET version = ?", (target,))
     conn.commit()

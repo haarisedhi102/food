@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from . import config, db, llm, shelflife
+from . import config, db, llm, reference, shelflife
 from .models import CanonicalItem
 
 BATCH_SIZE = 30
@@ -89,7 +89,11 @@ def pending_count(conn: sqlite3.Connection) -> int:
 def _build_user(items: list[dict], conn: sqlite3.Connection) -> str:
     payload = []
     for it in items:
-        cands = shelflife.search_candidates(conn, it["raw_description"] or "", limit=5)
+        # give retrieval both the description and any package-size hint
+        query = " ".join(
+            p for p in (it.get("raw_description"), it.get("raw_pkg_size")) if p
+        )
+        cands = reference.search(conn, query, limit=5)
         payload.append(
             {
                 "item_key": it["item_key"],

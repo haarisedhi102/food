@@ -1,0 +1,24 @@
+import sqlite3
+
+from food import db
+
+
+def _mem():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def test_migration_creates_embedding_table():
+    conn = _mem()
+    db.init_db(conn)
+    assert conn.execute("SELECT version FROM schema_version").fetchone()["version"] == 2
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(shelf_life_embedding)")}
+    assert {"foodkeeper_id", "model", "dim", "vector"} <= cols
+
+
+def test_migration_is_idempotent():
+    conn = _mem()
+    db.init_db(conn)
+    db.init_db(conn)
+    assert conn.execute("SELECT version FROM schema_version").fetchone()["version"] == 2

@@ -104,6 +104,20 @@ def sync_ref() -> None:
     console.print(f"[green]loaded[/] {n} FoodKeeper rows")
 
 
+@app.command("embed-ref")
+def embed_ref(force: bool = typer.Option(False, help="Re-embed every row, not just new ones")) -> None:
+    """Embed the FoodKeeper table for hybrid reference search (needs OPENROUTER_API_KEY)."""
+    from . import embeddings, reference
+
+    if not embeddings.is_configured():
+        console.print("[red]OPENROUTER_API_KEY is not set[/] — semantic search stays disabled.")
+        raise typer.Exit(1)
+    conn = _conn()
+    n = reference.embed_corpus(conn, force=force)
+    conn.close()
+    console.print(f"[green]embedded[/] {n} FoodKeeper rows with {embeddings.model_name()}")
+
+
 @app.command("probe-kroger")
 def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
     """Diagnostic: reproduce the details batch pattern and print each response status."""
