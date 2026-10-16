@@ -28,9 +28,6 @@
       <span class="px-2 py-1 rounded bg-slate-100">FoodKeeper #{{ p.foodkeeper_id }}</span>
     {% endif %}
     <span class="px-2 py-1 rounded bg-slate-100">confidence {{ p.llm_confidence }}</span>
-    {% if p.review_state == 'needs_review' %}
-      <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">needs review</span>
-    {% endif %}
   </div>
 
   <section class="mt-6 grid gap-6 lg:grid-cols-2">

@@ -52,9 +52,9 @@ uv run food sync-ref                  # load the FoodKeeper shelf-life table (on
 uv run food embed-ref                 # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
 uv run food sync --retailer costco    # log in when Chrome opens (MFA)
 uv run food sync --retailer kroger
-uv run food classify                  # canonicalize new items (batched, parallel)
+uv run food classify                  # canonicalize + ground remaining shelf life
 uv run food stock                     # build/refresh the fridge & pantry
-uv run food status                    # counts, review queue, LLM calls today
+uv run food status                    # counts, LLM calls today
 uv run food digest                    # "use it or lose it" suggestions
 uv run food serve                     # dashboard at http://127.0.0.1:8000
 ```
@@ -69,10 +69,9 @@ Refresh loop: `food sync && food classify && food stock`.
 | `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) matching |
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
-| `classify` | LLM canonicalization of unmapped items (parallel, cached by `item_key`) |
+| `classify` | Canonicalize unmapped items (parallel, cached), then ground remaining shelf life |
 | `stock` | Build/refresh inventory and show what's expiring |
-| `status` | Counts, needs-review, per-purpose LLM usage |
-| `review` | List the needs-review queue |
+| `status` | Counts and per-purpose LLM usage |
 | `digest` | LLM "use it or lose it" plan |
 | `serve` | Dashboard (binds `127.0.0.1`) |
 | `probe-kroger` | Diagnostic for the Kroger details endpoint |
@@ -102,6 +101,10 @@ Refresh loop: `food sync && food classify && food stock`.
   `.with_retry` and chained with `.with_fallbacks`, classification batches fan out through
   `.batch(max_concurrency=…)`, and FoodKeeper retrieval is an `EnsembleRetriever` (BM25 +
   embeddings).
+- **Shelf-life agent.** Anything still without a shelf life after FoodKeeper/LLM grounding
+  goes to a tool-calling agent: it answers from its own knowledge and searches the web only
+  when it needs to. Its verdict is trusted and written back as `shelf_life_source = web`
+  (re-expiry'ing any inventory rows already built) — there is no review queue to work through.
 - **Consumption.** Receipts say what you bought, not what's left. Inventory decays: rows
   expire at `acquired_on + shelf_life_days`, repeat purchases decrement oldest-first, and
   long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it

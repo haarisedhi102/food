@@ -164,20 +164,30 @@ def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
 
 @app.command("classify")
 def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
-    """Canonicalize unmapped receipt items (batched, cached by item_key)."""
-    from . import canonicalize, llm
+    """Canonicalize unmapped receipt items, then ground any remaining shelf life."""
+    from . import canonicalize, llm, shelflife_agent
 
     conn = _conn()
     try:
         stats = canonicalize.canonicalize(conn, limit)
     except llm.LLMError as e:
+        conn.close()
         console.print(f"[red]{e}[/]")
         raise typer.Exit(1)
-    conn.close()
     console.print(
         f"[green]canonicalized[/] {stats['ok']} items "
-        f"({stats['batches']} batches, {stats['fallback']} sent to review)"
+        f"({stats['batches']} batches, {stats['fallback']} unparsed)"
     )
+    if config.CMD_API_KEY:
+        try:
+            g = shelflife_agent.resolve_missing(conn)
+            console.print(
+                f"[green]shelf life[/] {g['resolved']} grounded by the agent, "
+                f"{g['unresolved']} unresolved"
+            )
+        except llm.LLMError as exc:  # classification already succeeded; this is a bonus
+            console.print(f"[yellow]shelf-life agent skipped[/]: {exc}")
+    conn.close()
 
 
 @app.command("stock")
@@ -272,26 +282,6 @@ def digest(days: int = typer.Option(3, help="Horizon in days")) -> None:
     console.print(text)
 
 
-@app.command("review")
-def review() -> None:
-    """List items the model was unsure about (perishable with no known shelf life)."""
-    conn = _conn()
-    rows = conn.execute(
-        """SELECT p.canonical_name, p.category, p.is_perishable, p.llm_confidence,
-                  m.retailer, m.raw_description
-           FROM products p LEFT JOIN item_map m ON m.product_id = p.id
-           WHERE p.review_state = 'needs_review'
-           ORDER BY m.retailer, p.canonical_name"""
-    ).fetchall()
-    conn.close()
-    console.print(f"[bold]{len(rows)}[/] to review")
-    for r in rows:
-        console.print(
-            f"  {str(r['retailer']):7} {str(r['raw_description'])[:40]:40} "
-            f"-> {str(r['canonical_name'])[:30]:30} perishable={r['is_perishable']} conf={r['llm_confidence']}"
-        )
-
-
 @app.command("status")
 def status() -> None:
     """Show what's in the database so far."""
@@ -305,7 +295,6 @@ def status() -> None:
         ("products", "SELECT COUNT(*) c FROM products"),
         ("inventory", "SELECT COUNT(*) c FROM inventory"),
         ("shelf_life_ref", "SELECT COUNT(*) c FROM shelf_life_ref"),
-        ("needs_review", "SELECT COUNT(*) c FROM products WHERE review_state = 'needs_review'"),
     ):
         try:
             rows = conn.execute(sql).fetchall()

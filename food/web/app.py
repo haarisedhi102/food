@@ -129,18 +129,6 @@ def item(request: Request, pid: int):
     )
 
 
-@app.get("/review")
-def review(request: Request):
-    conn = _conn()
-    rows = conn.execute(
-        """SELECT p.*, m.raw_description, m.retailer, m.item_key
-           FROM products p LEFT JOIN item_map m ON m.product_id = p.id
-           WHERE p.review_state = 'needs_review' ORDER BY m.retailer, p.canonical_name"""
-    ).fetchall()
-    conn.close()
-    return TEMPLATES.TemplateResponse(request, "review.html", {"rows": [dict(r) for r in rows]})
-
-
 @app.get("/chat")
 def chat_page(request: Request):
     return TEMPLATES.TemplateResponse(request, "chat.html", {"answer": None, "question": ""})

@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS products (
     shelf_life_days_opened   INTEGER,
     shelf_life_source        TEXT,          -- foodkeeper | llm | manual
     foodkeeper_id            INTEGER,
-    review_state             TEXT NOT NULL DEFAULT 'ok',  -- ok | needs_review
     llm_model                TEXT,
     llm_confidence           REAL,
     classified_at            TEXT
