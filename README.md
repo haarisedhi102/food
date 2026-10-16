@@ -98,6 +98,10 @@ Refresh loop: `food sync && food classify && food stock`.
 - **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` (won a head-to-head benchmark:
   30/30 valid items in 52s vs 89s and 121s) with cheaper/free fallbacks. Batches run 6-wide.
   Chat and digest are cached and budgeted separately so they can't starve classification.
+- **LLM plumbing.** Built on LangChain: each model is a `ChatOpenAI` runnable wrapped with
+  `.with_retry` and chained with `.with_fallbacks`, classification batches fan out through
+  `.batch(max_concurrency=…)`, and FoodKeeper retrieval is an `EnsembleRetriever` (BM25 +
+  embeddings).
 - **Consumption.** Receipts say what you bought, not what's left. Inventory decays: rows
   expire at `acquired_on + shelf_life_days`, repeat purchases decrement oldest-first, and
   long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it
