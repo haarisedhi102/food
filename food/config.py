@@ -38,8 +38,6 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 EMBED_BASE_URL = os.getenv("FOOD_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
 EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "nvidia/nemotron-3-embed-1b:free")
 EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
-# Cosine floor for a semantic-only hit to count during reference matching.
-EMBED_MIN_SCORE = float(os.getenv("FOOD_EMBED_MIN_SCORE", "0.5"))
 
 # Ingestion
 COSTCO_LOOKBACK_DAYS = int(os.getenv("FOOD_COSTCO_LOOKBACK_DAYS", "90"))

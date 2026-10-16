@@ -68,3 +68,11 @@ def test_degrades_to_lexical_without_a_key(monkeypatch):
     conn = _mem()
     ids = [c["foodkeeper_id"] for c in reference.search(conn, "Jumbo Yellow Onions")]
     assert 294 in ids
+
+
+def test_match_grounds_a_canonical_name(monkeypatch):
+    monkeypatch.setattr(embeddings, "is_configured", lambda: False)
+    conn = _mem()
+    hit = reference.match(conn, "Jumbo Yellow Onions")
+    assert hit is not None and hit["foodkeeper_id"] == 294
+    assert reference.match(conn, "") is None

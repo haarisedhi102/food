@@ -2,8 +2,12 @@
 
 Both retailers flow through a single prompt and a single output schema, so their structural
 differences disappear at the boundary. Results are cached per (retailer, item_key) in
-`item_map`, so each product is canonicalized exactly once. Shelf life is taken from FoodKeeper
-when the model picks a candidate id, otherwise from the model's own estimate.
+`item_map`, so each product is canonicalized exactly once.
+
+Naming and reference matching are separate stages: this module decides what an item *is*
+(canonical name, category, storage, and a shelf-life estimate); `reference.match` then
+grounds that readable name in a FoodKeeper row. Matching the canonical name instead of the
+raw receipt code is worth ~0.1 recall@1 — see `bench/retrieval_bench.py`.
 """
 
 from __future__ import annotations
@@ -30,12 +34,12 @@ For each item return exactly these fields:
   unit ("count" | "weight" | "volume" or null),
   is_food (bool), is_perishable (bool),
   storage ("fridge" | "freezer" | "pantry" | "counter"),
-  foodkeeper_id (int or null), shelf_life_days (int or null),
-  shelf_life_days_opened (int or null), confidence (0.0-1.0).
+  shelf_life_days (int or null), shelf_life_days_opened (int or null),
+  confidence (0.0-1.0).
 
 Rules:
-- If one of the provided FoodKeeper candidates is a clear match, set foodkeeper_id to its id.
-- Otherwise set foodkeeper_id to null and give shelf_life_days from your own knowledge.
+- Write canonical_name as the plain, readable product name (expand abbreviations).
+- Give shelf_life_days from your own knowledge for perishable items.
 - Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false and
   is_perishable=false.
 - Items that do not spoil quickly (coffee, rice, canned goods, spices, oil) are
@@ -86,38 +90,30 @@ def pending_count(conn: sqlite3.Connection) -> int:
     return row["n"]
 
 
-def _build_user(items: list[dict], conn: sqlite3.Connection) -> str:
-    payload = []
-    for it in items:
-        # give retrieval both the description and any package-size hint
-        query = " ".join(
-            p for p in (it.get("raw_description"), it.get("raw_pkg_size")) if p
-        )
-        cands = reference.search(conn, query, limit=5)
-        payload.append(
-            {
-                "item_key": it["item_key"],
-                "retailer": it["retailer"],
-                "raw_description": it["raw_description"],
-                "pkg_size_hint": it.get("raw_pkg_size"),
-                "foodkeeper_candidates": [
-                    {"id": c["foodkeeper_id"], "name": c["name"], "subtitle": c["subtitle"]}
-                    for c in cands
-                ],
-            }
-        )
+def _build_user(items: list[dict]) -> str:
+    payload = [
+        {
+            "item_key": it["item_key"],
+            "retailer": it["retailer"],
+            "raw_description": it["raw_description"],
+            "pkg_size_hint": it.get("raw_pkg_size"),
+        }
+        for it in items
+    ]
     return json.dumps({"items": payload}, ensure_ascii=False)
 
 
 def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> None:
-    # Shelf life: FoodKeeper value wins; else the model's estimate.
+    # Shelf life: match the canonical name against FoodKeeper; else the model's estimate.
     days = ci.shelf_life_days
     source = "llm" if days is not None else None
-    if ci.foodkeeper_id is not None:
-        fk = shelflife.days_for(conn, ci.foodkeeper_id, ci.storage or "fridge")
+    foodkeeper_id = None
+    hit = reference.match(conn, ci.canonical_name)
+    if hit is not None:
+        fk = shelflife.days_for(conn, hit["foodkeeper_id"], ci.storage or "fridge")
         if fk is not None:
-            days, source = fk, "foodkeeper"
-    needs_review = ci.confidence < 0.4 or (ci.is_perishable and days is None)
+            days, source, foodkeeper_id = fk, "foodkeeper", hit["foodkeeper_id"]
+    needs_review = ci.confidence < 0.4
 
     cur = conn.execute(
         """INSERT INTO products
@@ -137,7 +133,7 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
             days,
             ci.shelf_life_days_opened,
             source,
-            ci.foodkeeper_id,
+            foodkeeper_id,
             "needs_review" if needs_review else "ok",
             llm.config.MODEL,
             ci.confidence,
@@ -209,8 +205,8 @@ def canonicalize(
     models = [config.MODEL, *config.FALLBACK_MODELS]
 
     def run(batches: list[list[dict]]) -> list[tuple[list[dict], dict]]:
-        # prompts are built in the main thread (search_candidates needs this connection)
-        work = [(b, _build_user(b, conn)) for b in batches]
+        # prompts are built in the main thread
+        work = [(b, _build_user(b)) for b in batches]
         out: list[tuple[list[dict], dict]] = []
         with ThreadPoolExecutor(max_workers=workers) as ex:
             futures = {ex.submit(_call_batch, b, u, models): b for b, u in work}

@@ -86,22 +86,26 @@ def _lexical_ids(conn: sqlite3.Connection, text: str, limit: int) -> list[int]:
 
 
 def _semantic_ids(
-    conn: sqlite3.Connection, text: str, limit: int, model: str, min_score: float
+    conn: sqlite3.Connection, text: str, limit: int, model: str
 ) -> list[int]:
     if not embeddings.is_configured() or not text:
         return []
+    rows = list(
+        conn.execute(
+            "SELECT foodkeeper_id, vector FROM shelf_life_embedding WHERE model = ?", (model,)
+        )
+    )
+    if not rows:
+        return []  # nothing embedded yet — don't pay for a query embedding
     try:
         q = _normalize(embeddings.embed([text], model=model)[0])
     except Exception:  # noqa: BLE001 - retrieval degrades to lexical on any embedding failure
         return []
-    scored = [
-        (_cosine(q, _from_blob(row["vector"])), row["foodkeeper_id"])
-        for row in conn.execute(
-            "SELECT foodkeeper_id, vector FROM shelf_life_embedding WHERE model = ?", (model,)
-        )
-    ]
+    scored = [(_cosine(q, _from_blob(row["vector"])), row["foodkeeper_id"]) for row in rows]
     scored.sort(key=lambda t: (-t[0], t[1]))
-    return [fid for score, fid in scored[:limit] if score >= min_score]
+    # Rank, don't threshold: an absolute cosine floor is model-dependent and was filtering
+    # out every hit (even strong matches fall below 0.5 on these models). RRF ranks instead.
+    return [fid for _, fid in scored[:limit]]
 
 
 def _rows(conn: sqlite3.Connection, ids: list[int]) -> list[dict]:
@@ -119,14 +123,12 @@ def search(
     text: str,
     limit: int = 8,
     model: str | None = None,
-    min_score: float | None = None,
 ) -> list[dict]:
     """Hybrid keyword + semantic FoodKeeper candidates, best first."""
     model = model or embeddings.model_name()
-    min_score = config.EMBED_MIN_SCORE if min_score is None else min_score
     pool = limit * 2
     lex = _lexical_ids(conn, text, pool)
-    sem = _semantic_ids(conn, text, pool, model, min_score)
+    sem = _semantic_ids(conn, text, pool, model)
 
     if not sem:
         return _rows(conn, lex[:limit])
@@ -138,3 +140,16 @@ def search(
         scores[fid] = scores.get(fid, 0.0) + 1.0 / (RRF_K + rank + 1)
     order = sorted(scores, key=lambda f: (-scores[f], f))
     return _rows(conn, order[:limit])
+
+
+def match(conn: sqlite3.Connection, name: str, model: str | None = None) -> dict | None:
+    """The FoodKeeper row that grounds a *canonical* product name, or None.
+
+    Matching runs on the canonical name (a readable description like "Organic A2 Milk"),
+    not the raw receipt code. `bench/retrieval_bench.py` shows that alone is worth ~0.1
+    recall@1.
+    """
+    if not name:
+        return None
+    hits = search(conn, name, limit=1, model=model)
+    return hits[0] if hits else None
