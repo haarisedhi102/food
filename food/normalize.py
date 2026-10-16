@@ -13,6 +13,8 @@ import sqlite3
 from datetime import datetime
 from typing import Any
 
+from .models import NormalizedItem, NormalizedReceipt
+
 
 def _cents(v: Any) -> int | None:
     if v is None:
@@ -44,7 +46,7 @@ def _fallback_key(*parts: Any) -> str:
     return "desc:" + hashlib.sha1(joined.encode()).hexdigest()[:16]
 
 
-def normalize_costco(raw: Any) -> list[dict]:
+def normalize_costco(raw: Any) -> list[NormalizedReceipt]:
     from .ingest import costco
 
     receipts = []
@@ -62,33 +64,33 @@ def normalize_costco(raw: Any) -> list[dict]:
                 continue
             number = str(it.get("itemNumber") or "").strip()
             items.append(
-                {
-                    "raw_description": desc,
-                    "item_key": number or _fallback_key(desc),
-                    "raw_pkg_size": None,
-                    "quantity": float(unit) if isinstance(unit, (int, float)) else 1.0,
-                    "unit_price_cents": _cents(it.get("itemUnitPriceAmount")),
-                    "line_total_cents": _cents(it.get("amount")),
-                }
+                NormalizedItem(
+                    raw_description=desc,
+                    item_key=number or _fallback_key(desc),
+                    raw_pkg_size=None,
+                    quantity=float(unit) if isinstance(unit, (int, float)) else 1.0,
+                    unit_price_cents=_cents(it.get("itemUnitPriceAmount")),
+                    line_total_cents=_cents(it.get("amount")),
+                )
             )
         ext = str(
             r.get("transactionBarcode")
             or f"{r.get('warehouseNumber')}-{r.get('transactionNumber')}-{r.get('transactionDate')}"
         )
         receipts.append(
-            {
-                "external_id": ext,
-                "purchased_on": _local_date(r.get("transactionDateTime") or r.get("transactionDate")),
-                "store": r.get("warehouseName"),
-                "total_cents": _cents(r.get("total")),
-                "items": items,
-                "raw": r,
-            }
+            NormalizedReceipt(
+                external_id=ext,
+                purchased_on=_local_date(r.get("transactionDateTime") or r.get("transactionDate")),
+                store=r.get("warehouseName"),
+                total_cents=_cents(r.get("total")),
+                items=items,
+                raw=r,
+            )
         )
     return receipts
 
 
-def normalize_kroger(raw: Any) -> list[dict]:
+def normalize_kroger(raw: Any) -> list[NormalizedReceipt]:
     from .ingest import kroger
 
     search = raw.get("search") or []
@@ -125,26 +127,26 @@ def normalize_kroger(raw: Any) -> list[dict]:
             qty = (pd.get("quantityInfo") or {}).get("received", 1)
             pricing = pd.get("pricingInfo") or {}
             items.append(
-                {
-                    "raw_description": desc,
-                    "item_key": upc or _fallback_key(desc),
-                    "raw_pkg_size": di.get("customerFacingSize"),
-                    "quantity": float(qty) if isinstance(qty, (int, float)) else 1.0,
-                    "unit_price_cents": _cents(pricing.get("unitPricePaid")),
-                    "line_total_cents": _cents(pricing.get("totalPricePaid")),
-                }
+                NormalizedItem(
+                    raw_description=desc,
+                    item_key=upc or _fallback_key(desc),
+                    raw_pkg_size=di.get("customerFacingSize"),
+                    quantity=float(qty) if isinstance(qty, (int, float)) else 1.0,
+                    unit_price_cents=_cents(pricing.get("unitPricePaid")),
+                    line_total_cents=_cents(pricing.get("totalPricePaid")),
+                )
             )
 
         total = (match.get("costSummary") or {}).get("total") or rec.get("total")
         receipts.append(
-            {
-                "external_id": key,
-                "purchased_on": _local_date((rec.get("createdDateTime") or {}).get("value")),
-                "store": rec.get("handoffStoreId"),
-                "total_cents": _cents(total),
-                "items": items,
-                "raw": {"search": rec, "details": match},
-            }
+            NormalizedReceipt(
+                external_id=key,
+                purchased_on=_local_date((rec.get("createdDateTime") or {}).get("value")),
+                store=rec.get("handoffStoreId"),
+                total_cents=_cents(total),
+                items=items,
+                raw={"search": rec, "details": match},
+            )
         )
     return receipts
 
@@ -152,12 +154,12 @@ def normalize_kroger(raw: Any) -> list[dict]:
 NORMALIZERS = {"costco": normalize_costco, "kroger": normalize_kroger}
 
 
-def store(conn: sqlite3.Connection, retailer: str, receipts: list[dict]) -> tuple[int, int]:
+def store(conn: sqlite3.Connection, retailer: str, receipts: list[NormalizedReceipt]) -> tuple[int, int]:
     new_receipts = new_items = 0
     for r in receipts:
         cur = conn.execute(
             "SELECT id FROM receipts WHERE retailer = ? AND external_id = ?",
-            (retailer, r["external_id"]),
+            (retailer, r.external_id),
         )
         row = cur.fetchone()
         if row:
@@ -168,28 +170,28 @@ def store(conn: sqlite3.Connection, retailer: str, receipts: list[dict]) -> tupl
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     retailer,
-                    r["external_id"],
-                    r["purchased_on"] or "1970-01-01",
-                    r.get("store"),
-                    r.get("total_cents"),
-                    json.dumps(r.get("raw")),
+                    r.external_id,
+                    r.purchased_on or "1970-01-01",
+                    r.store,
+                    r.total_cents,
+                    json.dumps(r.raw),
                 ),
             )
             rid = cur.lastrowid
             new_receipts += 1
-        for it in r["items"]:
+        for it in r.items:
             cur = conn.execute(
                 """INSERT OR IGNORE INTO receipt_items
                    (receipt_id, raw_description, item_key, raw_pkg_size, quantity, unit_price_cents, line_total_cents)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
                     rid,
-                    it["raw_description"],
-                    it["item_key"],
-                    it.get("raw_pkg_size"),
-                    it.get("quantity", 1.0),
-                    it.get("unit_price_cents"),
-                    it.get("line_total_cents"),
+                    it.raw_description,
+                    it.item_key,
+                    it.raw_pkg_size,
+                    it.quantity,
+                    it.unit_price_cents,
+                    it.line_total_cents,
                 ),
             )
             new_items += cur.rowcount
