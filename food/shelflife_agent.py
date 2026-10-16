@@ -1,10 +1,10 @@
-"""Resolve low-confidence shelf life with a web-search agent.
+"""Ground shelf life with a web-search agent.
 
-Canonicalization grounds most items in FoodKeeper or a confident LLM estimate. When it is
-unsure — low confidence, or a perishable with no known shelf life — parking the item in the
-review queue leaves the fridge incomplete. Instead a LangChain tool-calling agent searches
-the web for how long the item keeps and returns a structured answer, which is written back
-to the product (and to any inventory rows already built from it).
+Canonicalization grounds most items in FoodKeeper or a confident LLM estimate. For anything
+still without a shelf life — a perishable the reference table couldn't place — we don't park
+it in a review queue and wait. A LangChain tool-calling agent answers from its own knowledge
+and searches the web only when it needs to, and we trust the result. The value is written
+back to the product (and to any inventory rows already built from it).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from langchain.agents import create_agent
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from . import config, llm
+from . import llm
 
 SYSTEM = """You determine how long a grocery item keeps after purchase, and where it should be stored.
 Answer from your own knowledge when you are confident. Use the web_search tool only when you need
@@ -85,7 +85,7 @@ def _apply(conn: sqlite3.Connection, product_id: int, guess: ShelfLifeGuess) -> 
         """UPDATE products
            SET shelf_life_days = ?, shelf_life_days_opened = ?,
                storage = COALESCE(?, storage), is_perishable = ?,
-               shelf_life_source = 'web', review_state = 'ok', llm_confidence = ?
+               shelf_life_source = 'web', llm_confidence = ?
            WHERE id = ?""",
         (
             guess.shelf_life_days,
@@ -110,12 +110,13 @@ def _apply(conn: sqlite3.Connection, product_id: int, guess: ShelfLifeGuess) -> 
         )
 
 
-def enrich(conn: sqlite3.Connection, limit: int | None = None) -> dict[str, int]:
-    """Resolve shelf life for every needs-review product via the web-search agent."""
+def resolve_missing(conn: sqlite3.Connection, limit: int | None = None) -> dict[str, int]:
+    """Fill shelf life for perishables the pipeline couldn't ground. The agent's answer is
+    trusted — nothing is parked for review."""
     sql = """
         SELECT id, canonical_name, category
         FROM products
-        WHERE review_state = 'needs_review'
+        WHERE is_perishable = 1 AND shelf_life_days IS NULL
         ORDER BY id
     """
     if limit:
@@ -127,14 +128,10 @@ def enrich(conn: sqlite3.Connection, limit: int | None = None) -> dict[str, int]
         try:
             guess = resolve(row["canonical_name"], category=row["category"])
         except Exception as e:  # noqa: BLE001 - one bad item must not stop the batch
-            print(f"    enrich failed for {row['canonical_name']}: {e}")
+            print(f"    shelf-life agent failed for {row['canonical_name']}: {e}")
             stats["errors"] += 1
             continue
-        if (
-            guess is not None
-            and guess.confidence >= config.ENRICH_MIN_CONFIDENCE
-            and (guess.shelf_life_days is not None or not guess.is_perishable)
-        ):
+        if guess is not None and (guess.shelf_life_days is not None or not guess.is_perishable):
             _apply(conn, row["id"], guess)
             stats["resolved"] += 1
         else:

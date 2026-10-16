@@ -10,12 +10,12 @@ def _mem():
     return conn
 
 
-def _seed_review(conn, perishable=1, shelf_life=None):
+def _seed(conn, perishable=1, shelf_life=None, review="ok"):
     conn.execute(
         """INSERT INTO products (canonical_name, category, is_food, is_perishable,
                                  shelf_life_days, review_state)
-           VALUES ('Mystery Greens', 'Produce', 1, ?, ?, 'needs_review')""",
-        (perishable, shelf_life),
+           VALUES ('Mystery Greens', 'Produce', 1, ?, ?, ?)""",
+        (perishable, shelf_life, review),
     )
     pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
     conn.execute(
@@ -41,9 +41,9 @@ def _guess(**kw):
     return shelflife_agent.ShelfLifeGuess(**kw)
 
 
-def test_enrich_resolves_and_syncs_inventory(monkeypatch):
+def test_resolve_missing_fills_shelf_life_and_syncs_inventory(monkeypatch):
     conn = _mem()
-    pid = _seed_review(conn)
+    pid = _seed(conn)
     inventory.build(conn)
     assert conn.execute("SELECT expires_on FROM inventory").fetchone()["expires_on"] is None
 
@@ -54,36 +54,47 @@ def test_enrich_resolves_and_syncs_inventory(monkeypatch):
             shelf_life_days=5, storage="fridge"
         ),
     )
-    stats = shelflife_agent.enrich(conn)
+    stats = shelflife_agent.resolve_missing(conn)
     assert stats == {"resolved": 1, "unresolved": 0, "errors": 0}
 
     p = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
     assert p["shelf_life_days"] == 5
     assert p["shelf_life_source"] == "web"
-    assert p["review_state"] == "ok"
     assert p["storage"] == "fridge"
 
     inv = conn.execute("SELECT expires_on FROM inventory WHERE product_id = ?", (pid,)).fetchone()
     assert inv["expires_on"] == "2026-10-15"  # 2026-10-10 + 5
 
 
-def test_low_confidence_is_left_for_review(monkeypatch):
+def test_agent_answer_is_trusted_even_at_low_confidence(monkeypatch):
     conn = _mem()
-    pid = _seed_review(conn)
+    pid = _seed(conn)
     monkeypatch.setattr(
         shelflife_agent,
         "resolve",
-        lambda name, description=None, category=None: _guess(shelf_life_days=5, confidence=0.2),
+        lambda name, description=None, category=None: _guess(shelf_life_days=5, confidence=0.1),
     )
-    stats = shelflife_agent.enrich(conn)
-    assert stats == {"resolved": 0, "unresolved": 1, "errors": 0}
-    state = conn.execute("SELECT review_state FROM products WHERE id = ?", (pid,)).fetchone()
-    assert state["review_state"] == "needs_review"
+    stats = shelflife_agent.resolve_missing(conn)
+    assert stats["resolved"] == 1
+    days = conn.execute("SELECT shelf_life_days FROM products WHERE id = ?", (pid,)).fetchone()
+    assert days["shelf_life_days"] == 5
+
+
+def test_items_with_a_known_shelf_life_are_untouched(monkeypatch):
+    conn = _mem()
+    _seed(conn, shelf_life=30)
+
+    def _boom(*a, **k):
+        raise AssertionError("should not be called")
+
+    monkeypatch.setattr(shelflife_agent, "resolve", _boom)
+    stats = shelflife_agent.resolve_missing(conn)
+    assert stats == {"resolved": 0, "unresolved": 0, "errors": 0}
 
 
 def test_non_perishable_verdict_clears_expiry(monkeypatch):
     conn = _mem()
-    pid = _seed_review(conn)
+    pid = _seed(conn)
     inventory.build(conn)
     monkeypatch.setattr(
         shelflife_agent,
@@ -92,22 +103,21 @@ def test_non_perishable_verdict_clears_expiry(monkeypatch):
             is_perishable=False, shelf_life_days=None
         ),
     )
-    stats = shelflife_agent.enrich(conn)
+    stats = shelflife_agent.resolve_missing(conn)
     assert stats["resolved"] == 1
-    p = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
+    p = conn.execute("SELECT is_perishable FROM products WHERE id = ?", (pid,)).fetchone()
     assert p["is_perishable"] == 0
-    assert p["review_state"] == "ok"
 
 
 def test_agent_error_is_counted_not_fatal(monkeypatch):
     conn = _mem()
-    _seed_review(conn)
+    _seed(conn)
 
     def boom(*a, **k):
         raise RuntimeError("agent down")
 
     monkeypatch.setattr(shelflife_agent, "resolve", boom)
-    stats = shelflife_agent.enrich(conn)
+    stats = shelflife_agent.resolve_missing(conn)
     assert stats == {"resolved": 0, "unresolved": 0, "errors": 1}
 
 

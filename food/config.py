@@ -40,9 +40,6 @@ EMBED_BASE_URL = os.getenv("FOOD_EMBED_BASE_URL", "https://openrouter.ai/api/v1"
 EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "baai/bge-base-en-v1.5")
 EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
 
-# Enrichment: resolve low-confidence shelf life with a web-search agent.
-ENRICH_MIN_CONFIDENCE = float(os.getenv("FOOD_ENRICH_MIN_CONFIDENCE", "0.6"))
-
 # Ingestion
 COSTCO_LOOKBACK_DAYS = int(os.getenv("FOOD_COSTCO_LOOKBACK_DAYS", "90"))
 KROGER_LOOKBACK_DAYS = int(os.getenv("FOOD_KROGER_LOOKBACK_DAYS", "90"))

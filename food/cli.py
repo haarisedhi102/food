@@ -163,13 +163,8 @@ def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
 
 
 @app.command("classify")
-def classify(
-    limit: Optional[int] = typer.Option(None, help="Max items to canonicalize"),
-    enrich: bool = typer.Option(
-        True, "--enrich/--no-enrich", help="Resolve leftover low-confidence items with the search agent"
-    ),
-) -> None:
-    """Canonicalize unmapped receipt items, then resolve any low-confidence shelf life."""
+def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
+    """Canonicalize unmapped receipt items, then ground any remaining shelf life."""
     from . import canonicalize, llm, shelflife_agent
 
     conn = _conn()
@@ -183,37 +178,16 @@ def classify(
         f"[green]canonicalized[/] {stats['ok']} items "
         f"({stats['batches']} batches, {stats['fallback']} sent to review)"
     )
-    if enrich and config.CMD_API_KEY:
+    if config.CMD_API_KEY:
         try:
-            e = shelflife_agent.enrich(conn)
+            g = shelflife_agent.resolve_missing(conn)
             console.print(
-                f"[green]enriched[/] {e['resolved']} resolved, "
-                f"{e['unresolved']} unresolved, {e['errors']} errors"
+                f"[green]shelf life[/] {g['resolved']} grounded by the agent, "
+                f"{g['unresolved']} unresolved"
             )
-        except llm.LLMError as exc:  # enrichment is a bonus; classification already succeeded
-            console.print(f"[yellow]enrichment skipped[/]: {exc}")
+        except llm.LLMError as exc:  # classification already succeeded; this is a bonus
+            console.print(f"[yellow]shelf-life agent skipped[/]: {exc}")
     conn.close()
-
-
-@app.command("enrich")
-def enrich(limit: Optional[int] = typer.Option(None, help="Max items to enrich")) -> None:
-    """Backfill: (re)resolve the needs-review queue with the web-search agent.
-
-    `classify` already does this; run it standalone to retry items left in review."""
-    from . import llm, shelflife_agent
-
-    conn = _conn()
-    try:
-        stats = shelflife_agent.enrich(conn, limit)
-    except llm.LLMError as e:
-        conn.close()
-        console.print(f"[red]{e}[/]")
-        raise typer.Exit(1)
-    conn.close()
-    console.print(
-        f"[green]enriched[/] {stats['resolved']} resolved, "
-        f"{stats['unresolved']} unresolved, {stats['errors']} errors"
-    )
 
 
 @app.command("stock")
