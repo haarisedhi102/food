@@ -32,11 +32,12 @@ FALLBACK_MODELS = [
 ]
 CLASSIFY_WORKERS = int(os.getenv("FOOD_CLASSIFY_WORKERS", "6"))
 
-# Embeddings (OpenRouter, OpenAI-compatible /embeddings). The default model is free, so a
-# small credit balance is never touched; paid models are opt-in via FOOD_EMBED_MODEL.
+# Embeddings (OpenRouter, OpenAI-compatible /embeddings). Defaults to a cheap paid model:
+# the free tier caps at ~20 requests/min, which throttles per-item matching, and the paid
+# model matched better in the benchmark anyway. Override with FOOD_EMBED_MODEL.
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 EMBED_BASE_URL = os.getenv("FOOD_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
-EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "nvidia/nemotron-3-embed-1b:free")
+EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "baai/bge-base-en-v1.5")
 EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
 
 # Ingestion

@@ -103,16 +103,11 @@ def _build_user(items: list[dict]) -> str:
     return json.dumps({"items": payload}, ensure_ascii=False)
 
 
-def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> None:
-    # Shelf life: match the canonical name against FoodKeeper; else the model's estimate.
+def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> int:
+    # Shelf life starts as the model's estimate; FoodKeeper grounding happens afterwards
+    # in `_ground`, once the whole batch is stored, so it can be done in one rerank call.
     days = ci.shelf_life_days
     source = "llm" if days is not None else None
-    foodkeeper_id = None
-    hit = reference.match(conn, ci.canonical_name)
-    if hit is not None:
-        fk = shelflife.days_for(conn, hit["foodkeeper_id"], ci.storage or "fridge")
-        if fk is not None:
-            days, source, foodkeeper_id = fk, "foodkeeper", hit["foodkeeper_id"]
     needs_review = ci.confidence < 0.4
 
     cur = conn.execute(
@@ -133,7 +128,7 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
             days,
             ci.shelf_life_days_opened,
             source,
-            foodkeeper_id,
+            None,
             "needs_review" if needs_review else "ok",
             llm.config.MODEL,
             ci.confidence,
@@ -144,6 +139,28 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
            VALUES (?, ?, ?, ?)""",
         (retailer, item["item_key"], item.get("raw_description"), cur.lastrowid),
     )
+    return cur.lastrowid
+
+
+def _ground(conn: sqlite3.Connection, stored: list[tuple[int, str, str]]) -> None:
+    """Ground stored products in FoodKeeper: hybrid shortlist per name, one batched rerank."""
+    if not stored:
+        return
+    picks = reference.match_batch(conn, [name for _, name, _ in stored])
+    for pid, name, storage in stored:
+        fid = picks.get(name)
+        if fid is None:
+            continue
+        days = shelflife.days_for(conn, fid, storage)
+        if days is None:
+            continue
+        conn.execute(
+            """UPDATE products
+               SET foodkeeper_id = ?, shelf_life_days = ?, shelf_life_source = 'foodkeeper'
+               WHERE id = ?""",
+            (fid, days, pid),
+        )
+    conn.commit()
 
 
 def _fallback(conn: sqlite3.Connection, retailer: str, item: dict) -> None:
@@ -176,6 +193,7 @@ def _apply(conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict)
             by_key[str(raw["item_key"])] = raw
 
     failed = []
+    stored: list[tuple[int, str, str]] = []
     for item in batch:
         raw = by_key.get(str(item["item_key"]))
         if raw is None:
@@ -186,9 +204,11 @@ def _apply(conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict)
         except ValidationError:
             failed.append(item)
             continue
-        _store(conn, item["retailer"], item, ci)
+        pid = _store(conn, item["retailer"], item, ci)
+        stored.append((pid, ci.canonical_name, ci.storage or "fridge"))
         stats["ok"] += 1
     conn.commit()
+    _ground(conn, stored)
     return failed
 
 

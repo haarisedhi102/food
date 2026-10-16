@@ -43,7 +43,7 @@ endpoint `https://api.commandcode.ai/provider/v1`.
 
 `OPENROUTER_API_KEY` is optional. Without it, FoodKeeper matching is keyword-only; with it,
 `embed-ref` builds a semantic index and matching becomes hybrid (keyword + embeddings). The
-default embedding model is free.
+default embedding model is a cheap paid one (`baai/bge-base-en-v1.5`).
 
 ## Use
 
@@ -87,13 +87,14 @@ Refresh loop: `food sync && food classify && food stock`.
   `atlas` purchase-history endpoints. Raw JSON is archived in `data/imports/`, so a changed
   field needs a re-normalize, not a re-scrape. `food import` is the escape hatch when a
   scraper breaks.
-- **Shelf life.** USDA FoodKeeper (public domain) is the reference table. Matching is split
-  out from canonicalization: `reference.py` retrieves candidate rows with hybrid keyword +
-  semantic search (embeddings from OpenRouter, fused by reciprocal rank), and the LLM maps the
-  item onto them. When there's a clear match the table value wins, otherwise the LLM supplies
-  an estimate in the same shape. Units are converted from FoodKeeper's `*_Metric`
-  (Weeks/Months/…), and qualitative values ("Package use-by date") fall through to the LLM.
-  Each product records `shelf_life_source` (foodkeeper / llm / manual).
+- **Shelf life.** USDA FoodKeeper (public domain) is the reference table. Matching is a stage
+  of its own, split from canonicalization: `reference.py` retrieves a shortlist with hybrid
+  keyword + semantic search (RRF; embeddings from OpenRouter), then one batched LLM call picks
+  the row. Retrieval runs on the *canonical* name (e.g. "Organic A2 Milk"), not the raw code —
+  `bench/retrieval_bench.py` measures canonical + rrf + rerank at ~0.94 recall@1. When a row is
+  picked its shelf life wins, otherwise the LLM's estimate stands. Units are converted from
+  FoodKeeper's `*_Metric` (Weeks/Months/…), and qualitative values ("Package use-by date") fall
+  through to the LLM. Each product records `shelf_life_source` (foodkeeper / llm / web).
 - **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` (won a head-to-head benchmark:
   30/30 valid items in 52s vs 89s and 121s) with cheaper/free fallbacks. Batches run 6-wide.
   Chat and digest are cached and budgeted separately so they can't starve classification.

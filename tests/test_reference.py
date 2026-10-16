@@ -76,3 +76,20 @@ def test_match_grounds_a_canonical_name(monkeypatch):
     hit = reference.match(conn, "Jumbo Yellow Onions")
     assert hit is not None and hit["foodkeeper_id"] == 294
     assert reference.match(conn, "") is None
+
+
+def test_match_batch_uses_the_llm_pick(monkeypatch):
+    monkeypatch.setattr(embeddings, "is_configured", lambda: False)
+    conn = _mem()
+    monkeypatch.setattr(
+        reference.llm, "chat_json", lambda *a, **k: {"picks": {"Yellow Onions": 294}}
+    )
+    assert reference.match_batch(conn, ["Yellow Onions"]) == {"Yellow Onions": 294}
+
+
+def test_match_batch_falls_back_to_the_top_hit(monkeypatch):
+    monkeypatch.setattr(embeddings, "is_configured", lambda: False)
+    conn = _mem()
+    monkeypatch.setattr(reference.llm, "chat_json", lambda *a, **k: {})
+    picks = reference.match_batch(conn, ["Jumbo Yellow Onions"])
+    assert picks["Jumbo Yellow Onions"] == 294
