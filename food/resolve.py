@@ -141,9 +141,13 @@ def resolve_batch(
         }
         for it in items
     ]
-    result: dict[str, Any] = _agent().invoke(
-        {"messages": [("user", json.dumps({"items": payload}, ensure_ascii=False))]}
-    )
+    try:
+        result: dict[str, Any] = _agent().invoke(
+            {"messages": [("user", json.dumps({"items": payload}, ensure_ascii=False))]}
+        )
+    except Exception as e:  # noqa: BLE001 - a resolver failure must not abort classification
+        print(f"    shelf-life resolver failed: {e}")
+        return {}
     verdict: BatchVerdict | None = result.get("structured_response")
 
     out: dict[str, ItemVerdict] = {}
