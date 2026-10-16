@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
 from . import config, db, llm, reference, shelflife
@@ -177,16 +177,22 @@ def _fallback(conn: sqlite3.Connection, retailer: str, item: dict) -> None:
     )
 
 
-def _call_batch(batch: list[dict], user: str, models: list[str]) -> dict:
-    """Runs in a worker thread, so it needs its own connection."""
+def _call_batch(payload: tuple[list[dict], str]) -> tuple[list[dict], dict]:
+    """Runs in a LangChain worker thread, so it needs its own connection."""
+    batch, user = payload
     wc = db.connect()
     try:
-        return llm.chat_json(wc, "canonicalize", SYSTEM, user, models=models)
+        return batch, llm.chat_json(wc, "canonicalize", SYSTEM, user)
+    except Exception as e:  # noqa: BLE001 - degrade to the review queue
+        print(f"    canonicalize call failed: {e}")
+        return batch, {"items": []}
     finally:
         wc.close()
 
 
-def _apply(conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict) -> list[dict]:
+def _apply(
+    conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict
+) -> list[dict]:
     by_key: dict[str, Any] = {}
     for raw in data.get("items", []) or []:
         if isinstance(raw, dict) and raw.get("item_key") is not None:
@@ -222,22 +228,12 @@ def canonicalize(
     items = pending(conn, limit)
     if not items:
         return stats
-    models = [config.MODEL, *config.FALLBACK_MODELS]
+    call = RunnableLambda(_call_batch)
 
     def run(batches: list[list[dict]]) -> list[tuple[list[dict], dict]]:
         # prompts are built in the main thread
         work = [(b, _build_user(b)) for b in batches]
-        out: list[tuple[list[dict], dict]] = []
-        with ThreadPoolExecutor(max_workers=workers) as ex:
-            futures = {ex.submit(_call_batch, b, u, models): b for b, u in work}
-            for fut in as_completed(futures):
-                batch = futures[fut]
-                try:
-                    out.append((batch, fut.result()))
-                except Exception as e:  # noqa: BLE001 - degrade to the review queue
-                    print(f"    canonicalize call failed: {e}")
-                    out.append((batch, {"items": []}))
-        return out
+        return call.batch(work, config={"max_concurrency": workers})
 
     batches = [items[i : i + BATCH_SIZE] for i in range(0, len(items), BATCH_SIZE)]
     failed: list[dict] = []

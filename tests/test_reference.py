@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+from langchain_core.embeddings import Embeddings
 
 from food import db, embeddings, reference, shelflife
 
@@ -30,14 +31,18 @@ def _fake_vectors(text: str) -> list[float]:
     return [1.0, 0.0, 0.0]  # an unknown query lands nearest the Eggs vector
 
 
+class _FakeEmbeddings(Embeddings):
+    def embed_documents(self, texts):
+        return [_fake_vectors(t) for t in texts]
+
+    def embed_query(self, text):
+        return _fake_vectors(text)
+
+
 @pytest.fixture
 def model(monkeypatch):
     monkeypatch.setattr(embeddings, "is_configured", lambda: True)
-    monkeypatch.setattr(
-        embeddings,
-        "embed",
-        lambda texts, model=None, batch_size=None: [_fake_vectors(t) for t in texts],
-    )
+    monkeypatch.setattr(reference, "_embeddings", lambda m=None: _FakeEmbeddings())
     return "test-model"
 
 
