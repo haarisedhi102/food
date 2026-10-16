@@ -129,17 +129,22 @@ class _SqliteVectorRetriever(BaseRetriever):
     """Vector retriever over the embeddings persisted in `shelf_life_embedding`.
 
     Brute-force cosine — the FoodKeeper corpus is small, so an ANN index would be noise.
+    Query vectors can be supplied up front (`query_vectors`) so a batch of items is embedded
+    in one call instead of an API round-trip per name.
     """
 
     conn: Any
     embedding: Any
     model: str
     k: int = 8
+    query_vectors: dict[str, list[float]] = {}
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: Any = None
     ) -> list[Document]:
-        q = self.embedding.embed_query(query)
+        q = self.query_vectors.get(query)
+        if q is None:
+            q = self.embedding.embed_query(query)
         rows = list(
             self.conn.execute(
                 "SELECT foodkeeper_id, vector FROM shelf_life_embedding WHERE model = ?",
@@ -164,7 +169,12 @@ class _SqliteVectorRetriever(BaseRetriever):
         ]
 
 
-def build_retriever(conn: sqlite3.Connection, model: str | None = None, limit: int = 8):
+def build_retriever(
+    conn: sqlite3.Connection,
+    model: str | None = None,
+    limit: int = 8,
+    query_vectors: dict[str, list[float]] | None = None,
+):
     """Build the hybrid retriever, or the lexical one alone when embeddings are
     unavailable. Returns None when the reference table is empty."""
     model = model or embeddings.model_name()
@@ -181,7 +191,11 @@ def build_retriever(conn: sqlite3.Connection, model: str | None = None, limit: i
         return lexical  # nothing embedded yet — don't pay for a query embedding
 
     vector = _SqliteVectorRetriever(
-        conn=conn, embedding=_embeddings(model), model=model, k=limit * 2
+        conn=conn,
+        embedding=_embeddings(model),
+        model=model,
+        k=limit * 2,
+        query_vectors=query_vectors or {},
     )
     return EnsembleRetriever(retrievers=[lexical, vector], weights=[0.5, 0.5])
 
@@ -236,6 +250,23 @@ For each item you receive a readable name and a shortlist of FoodKeeper candidat
 Respond with ONLY JSON: {"picks": {"<item name>": <id or null>}}"""
 
 
+def _query_vectors(
+    conn: sqlite3.Connection, model: str, names: list[str]
+) -> dict[str, list[float]]:
+    """Embed every query name in one batched call.
+
+    Embedding per name is an API round-trip each (seconds apiece); batching them into a
+    single `embed_documents` call is the difference between minutes and seconds.
+    """
+    if not embeddings.is_configured():
+        return {}
+    if conn.execute(
+        "SELECT 1 FROM shelf_life_embedding WHERE model = ? LIMIT 1", (model,)
+    ).fetchone() is None:
+        return {}
+    return dict(zip(names, _embeddings(model).embed_documents(names)))
+
+
 def match_batch(
     conn: sqlite3.Connection,
     names: list[str],
@@ -247,7 +278,10 @@ def match_batch(
     uniq = list(dict.fromkeys(n for n in names if n))
     if not uniq:
         return {}
-    retriever = build_retriever(conn, model, limit=topn)
+    model = model or embeddings.model_name()
+    retriever = build_retriever(
+        conn, model, limit=topn, query_vectors=_query_vectors(conn, model, uniq)
+    )
     cand = {n: search_with(conn, retriever, n, topn) for n in uniq}
     if not any(cand.values()):
         return {n: None for n in uniq}

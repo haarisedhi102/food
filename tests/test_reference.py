@@ -98,3 +98,33 @@ def test_match_batch_falls_back_to_the_top_hit(monkeypatch):
     monkeypatch.setattr(reference.llm, "chat_json", lambda *a, **k: {})
     picks = reference.match_batch(conn, ["Jumbo Yellow Onions"])
     assert picks["Jumbo Yellow Onions"] == 294
+
+
+class _CountingEmbeddings(_FakeEmbeddings):
+    def __init__(self):
+        self.doc_calls = 0
+        self.query_calls = 0
+
+    def embed_documents(self, texts):
+        self.doc_calls += 1
+        return super().embed_documents(texts)
+
+    def embed_query(self, text):
+        self.query_calls += 1
+        return super().embed_query(text)
+
+
+def test_match_batch_embeds_all_queries_in_one_call(monkeypatch):
+    monkeypatch.setattr(embeddings, "is_configured", lambda: True)
+    counter = _CountingEmbeddings()
+    monkeypatch.setattr(reference, "_embeddings", lambda m=None: counter)
+    monkeypatch.setattr(reference.llm, "chat_json", lambda *a, **k: {})
+    conn = _mem()
+    reference.embed_corpus(conn, model="test-model")  # one batched call for the corpus
+    corpus_calls = counter.doc_calls
+
+    picks = reference.match_batch(conn, ["Eggs", "Milk", "Yogurt"], model="test-model")
+
+    assert counter.doc_calls == corpus_calls + 1  # all three queries in one call
+    assert counter.query_calls == 0  # never embedded one at a time
+    assert picks["Eggs"] is not None
