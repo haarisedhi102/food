@@ -2,8 +2,12 @@
 
 Both retailers flow through a single prompt and a single output schema, so their structural
 differences disappear at the boundary. Results are cached per (retailer, item_key) in
-`item_map`, so each product is canonicalized exactly once. Shelf life is taken from FoodKeeper
-when the model picks a candidate id, otherwise from the model's own estimate.
+`item_map`, so each product is canonicalized exactly once.
+
+Naming and reference matching are separate stages: this module decides what an item *is*
+(canonical name, category, storage, and a shelf-life estimate); `reference.match` then
+grounds that readable name in a FoodKeeper row. Matching the canonical name instead of the
+raw receipt code is worth ~0.1 recall@1 — see `bench/retrieval_bench.py`.
 """
 
 from __future__ import annotations
@@ -15,7 +19,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from . import config, db, llm, shelflife
+from . import config, db, llm, reference, shelflife
 from .models import CanonicalItem
 
 BATCH_SIZE = 30
@@ -30,12 +34,12 @@ For each item return exactly these fields:
   unit ("count" | "weight" | "volume" or null),
   is_food (bool), is_perishable (bool),
   storage ("fridge" | "freezer" | "pantry" | "counter"),
-  foodkeeper_id (int or null), shelf_life_days (int or null),
-  shelf_life_days_opened (int or null), confidence (0.0-1.0).
+  shelf_life_days (int or null), shelf_life_days_opened (int or null),
+  confidence (0.0-1.0).
 
 Rules:
-- If one of the provided FoodKeeper candidates is a clear match, set foodkeeper_id to its id.
-- Otherwise set foodkeeper_id to null and give shelf_life_days from your own knowledge.
+- Write canonical_name as the plain, readable product name (expand abbreviations).
+- Give shelf_life_days from your own knowledge for perishable items.
 - Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false and
   is_perishable=false.
 - Items that do not spoil quickly (coffee, rice, canned goods, spices, oil) are
@@ -86,34 +90,25 @@ def pending_count(conn: sqlite3.Connection) -> int:
     return row["n"]
 
 
-def _build_user(items: list[dict], conn: sqlite3.Connection) -> str:
-    payload = []
-    for it in items:
-        cands = shelflife.search_candidates(conn, it["raw_description"] or "", limit=5)
-        payload.append(
-            {
-                "item_key": it["item_key"],
-                "retailer": it["retailer"],
-                "raw_description": it["raw_description"],
-                "pkg_size_hint": it.get("raw_pkg_size"),
-                "foodkeeper_candidates": [
-                    {"id": c["foodkeeper_id"], "name": c["name"], "subtitle": c["subtitle"]}
-                    for c in cands
-                ],
-            }
-        )
+def _build_user(items: list[dict]) -> str:
+    payload = [
+        {
+            "item_key": it["item_key"],
+            "retailer": it["retailer"],
+            "raw_description": it["raw_description"],
+            "pkg_size_hint": it.get("raw_pkg_size"),
+        }
+        for it in items
+    ]
     return json.dumps({"items": payload}, ensure_ascii=False)
 
 
-def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> None:
-    # Shelf life: FoodKeeper value wins; else the model's estimate.
+def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalItem) -> int:
+    # Shelf life starts as the model's estimate; FoodKeeper grounding happens afterwards
+    # in `_ground`, once the whole batch is stored, so it can be done in one rerank call.
     days = ci.shelf_life_days
     source = "llm" if days is not None else None
-    if ci.foodkeeper_id is not None:
-        fk = shelflife.days_for(conn, ci.foodkeeper_id, ci.storage or "fridge")
-        if fk is not None:
-            days, source = fk, "foodkeeper"
-    needs_review = ci.confidence < 0.4 or (ci.is_perishable and days is None)
+    needs_review = ci.confidence < 0.4
 
     cur = conn.execute(
         """INSERT INTO products
@@ -133,7 +128,7 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
             days,
             ci.shelf_life_days_opened,
             source,
-            ci.foodkeeper_id,
+            None,
             "needs_review" if needs_review else "ok",
             llm.config.MODEL,
             ci.confidence,
@@ -144,6 +139,28 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
            VALUES (?, ?, ?, ?)""",
         (retailer, item["item_key"], item.get("raw_description"), cur.lastrowid),
     )
+    return cur.lastrowid
+
+
+def _ground(conn: sqlite3.Connection, stored: list[tuple[int, str, str]]) -> None:
+    """Ground stored products in FoodKeeper: hybrid shortlist per name, one batched rerank."""
+    if not stored:
+        return
+    picks = reference.match_batch(conn, [name for _, name, _ in stored])
+    for pid, name, storage in stored:
+        fid = picks.get(name)
+        if fid is None:
+            continue
+        days = shelflife.days_for(conn, fid, storage)
+        if days is None:
+            continue
+        conn.execute(
+            """UPDATE products
+               SET foodkeeper_id = ?, shelf_life_days = ?, shelf_life_source = 'foodkeeper'
+               WHERE id = ?""",
+            (fid, days, pid),
+        )
+    conn.commit()
 
 
 def _fallback(conn: sqlite3.Connection, retailer: str, item: dict) -> None:
@@ -176,6 +193,7 @@ def _apply(conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict)
             by_key[str(raw["item_key"])] = raw
 
     failed = []
+    stored: list[tuple[int, str, str]] = []
     for item in batch:
         raw = by_key.get(str(item["item_key"]))
         if raw is None:
@@ -186,9 +204,11 @@ def _apply(conn: sqlite3.Connection, batch: list[dict], data: dict, stats: dict)
         except ValidationError:
             failed.append(item)
             continue
-        _store(conn, item["retailer"], item, ci)
+        pid = _store(conn, item["retailer"], item, ci)
+        stored.append((pid, ci.canonical_name, ci.storage or "fridge"))
         stats["ok"] += 1
     conn.commit()
+    _ground(conn, stored)
     return failed
 
 
@@ -205,8 +225,8 @@ def canonicalize(
     models = [config.MODEL, *config.FALLBACK_MODELS]
 
     def run(batches: list[list[dict]]) -> list[tuple[list[dict], dict]]:
-        # prompts are built in the main thread (search_candidates needs this connection)
-        work = [(b, _build_user(b, conn)) for b in batches]
+        # prompts are built in the main thread
+        work = [(b, _build_user(b)) for b in batches]
         out: list[tuple[list[dict], dict]] = []
         with ThreadPoolExecutor(max_workers=workers) as ex:
             futures = {ex.submit(_call_batch, b, u, models): b for b, u in work}

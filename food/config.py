@@ -32,6 +32,14 @@ FALLBACK_MODELS = [
 ]
 CLASSIFY_WORKERS = int(os.getenv("FOOD_CLASSIFY_WORKERS", "6"))
 
+# Embeddings (OpenRouter, OpenAI-compatible /embeddings). Defaults to a cheap paid model:
+# the free tier caps at ~20 requests/min, which throttles per-item matching, and the paid
+# model matched better in the benchmark anyway. Override with FOOD_EMBED_MODEL.
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+EMBED_BASE_URL = os.getenv("FOOD_EMBED_BASE_URL", "https://openrouter.ai/api/v1")
+EMBED_MODEL = os.getenv("FOOD_EMBED_MODEL", "baai/bge-base-en-v1.5")
+EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
+
 # Ingestion
 COSTCO_LOOKBACK_DAYS = int(os.getenv("FOOD_COSTCO_LOOKBACK_DAYS", "90"))
 KROGER_LOOKBACK_DAYS = int(os.getenv("FOOD_KROGER_LOOKBACK_DAYS", "90"))

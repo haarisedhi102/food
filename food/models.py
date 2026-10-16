@@ -29,7 +29,6 @@ class CanonicalItem(BaseModel):
     is_food: bool = True
     is_perishable: bool = False
     storage: str | None = None  # fridge | freezer | pantry | counter
-    foodkeeper_id: int | None = None
     shelf_life_days: int | None = None
     shelf_life_days_opened: int | None = None
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
