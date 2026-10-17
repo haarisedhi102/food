@@ -31,6 +31,18 @@ class _FakeAgent:
         return {"structured_response": self._verdict}
 
 
+class _SequenceAgent:
+    """Returns queued responses in order, recording each payload it is given."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.payloads = []
+
+    def invoke(self, payload):
+        self.payloads.append(payload)
+        return self._responses.pop(0)
+
+
 def _batch(*items):
     return resolve.BatchVerdict(items=[resolve.ItemVerdict(**i) for i in items])
 
@@ -67,6 +79,31 @@ def test_resolve_batch_keeps_a_valid_id_and_drops_a_bogus_one(monkeypatch):
     assert out["Jumbo Yellow Onions"].source == "foodkeeper"
     assert out["Mystery Sauce"].foodkeeper_id is None
     assert out["Mystery Sauce"].source == "llm"
+
+
+def test_resolve_nudges_the_model_when_it_answers_in_prose(monkeypatch):
+    conn = _mem()
+    monkeypatch.setattr(resolve.time, "sleep", lambda *_: None)  # no backoff delay in tests
+    prose = {"messages": [("ai", "Here are the shelf lives and some notes…")]}  # no structured_response
+    good = {
+        "messages": [("ai", "ok")],
+        "structured_response": _batch(
+            {
+                "item": "Jumbo Yellow Onions",
+                "source": "foodkeeper",
+                "foodkeeper_id": 294,
+                "shelf_life_days": 60,
+            }
+        ),
+    }
+    agent = _SequenceAgent([prose, good])
+    monkeypatch.setattr(resolve, "_agent", lambda: agent)
+
+    out = resolve.resolve_batch(conn, [{"name": "Jumbo Yellow Onions"}])
+
+    assert out["Jumbo Yellow Onions"].foodkeeper_id == 294
+    assert len(agent.payloads) == 2  # the prose answer, then a nudge
+    assert "structured-response tool" in str(agent.payloads[1])
 
 
 def test_apply_writes_shelf_life_and_syncs_inventory():

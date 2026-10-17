@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from typing import Any, Literal
 
 from langchain.agents import create_agent
@@ -24,6 +25,13 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 from . import embeddings, llm, reference
+
+RESOLVE_CHUNK = 8  # items per agent run — keep each request small for the upstream model
+RESOLVE_ATTEMPTS = 3  # retries for a transient provider error (e.g. HTTP 524)
+NUDGE = (
+    "You did not return a structured response. Call the structured-response tool exactly "
+    "once, with one entry per item, and do not write any prose, notes, or commentary."
+)
 
 SYSTEM = """You resolve how long grocery items keep. You receive several items at once, and
 for each a shortlist of FoodKeeper reference rows with their shelf-life figures in days
@@ -121,17 +129,28 @@ def resolve_batch(
     model: str | None = None,
     topn: int = 5,
 ) -> dict[str, ItemVerdict]:
-    """Resolve shelf lives for a batch of items in a single agent run.
+    """Resolve shelf lives for a batch of items, one agent run per `RESOLVE_CHUNK`.
 
     `items` are {"id", "name", "category", "storage"} dicts. Returns {name: ItemVerdict}; any
-    `foodkeeper_id` is validated against that item's shortlist (a hallucinated id downgrades
-    to the model's own answer).
+    `foodkeeper_id` is validated against that item's shortlist (a hallucinated id downgrades to
+    the model's own answer). Chunking keeps each agent request small enough for the upstream to
+    answer, and a failed chunk is retried a few times before being left unresolved.
     """
     items = [it for it in items if it.get("name")]
     if not items:
         return {}
     model = model or embeddings.model_name()
     shortlists = _shortlists(conn, items, model, topn)
+
+    out: dict[str, ItemVerdict] = {}
+    for start in range(0, len(items), RESOLVE_CHUNK):
+        out.update(_resolve_chunk(items[start : start + RESOLVE_CHUNK], shortlists))
+    return out
+
+
+def _resolve_chunk(
+    chunk: list[dict], shortlists: dict[str, list[dict]]
+) -> dict[str, ItemVerdict]:
     payload = [
         {
             "item": it["name"],
@@ -139,19 +158,37 @@ def resolve_batch(
             "storage": it.get("storage"),
             "candidates": shortlists.get(it["name"], []),
         }
-        for it in items
+        for it in chunk
     ]
-    try:
-        result: dict[str, Any] = _agent().invoke(
-            {"messages": [("user", json.dumps({"items": payload}, ensure_ascii=False))]}
-        )
-    except Exception as e:  # noqa: BLE001 - a resolver failure must not abort classification
-        print(f"    shelf-life resolver failed: {e}")
+    agent = _agent()
+    messages: Any = [("user", json.dumps({"items": payload}, ensure_ascii=False))]
+
+    verdict: BatchVerdict | None = None
+    last: Exception | str | None = None
+    for attempt in range(RESOLVE_ATTEMPTS):
+        try:
+            result: dict[str, Any] = agent.invoke({"messages": messages})
+        except Exception as e:  # noqa: BLE001 - a transient upstream error (e.g. HTTP 524)
+            last = e
+            time.sleep(1.5 * (attempt + 1))
+            continue
+
+        verdict = result.get("structured_response")
+        if verdict is not None:
+            break
+        # The model answered in prose instead of calling the structured-output tool.
+        # Continue the same conversation and make the ask explicit (LangChain only
+        # auto-retries malformed structured output, not a missing one).
+        last = "no structured response"
+        messages = [*result.get("messages", []), ("user", NUDGE)]
+        time.sleep(1.0)
+
+    if verdict is None:
+        print(f"    shelf-life resolver failed ({len(chunk)} items): {last}")
         return {}
-    verdict: BatchVerdict | None = result.get("structured_response")
 
     out: dict[str, ItemVerdict] = {}
-    for v in getattr(verdict, "items", None) or []:
+    for v in verdict.items:
         ids = {c["foodkeeper_id"] for c in shortlists.get(v.item, [])}
         if v.source == "foodkeeper" and v.foodkeeper_id not in ids:
             v = v.model_copy(update={"foodkeeper_id": None, "source": "llm"})
