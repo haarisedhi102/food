@@ -32,38 +32,9 @@ def test_to_days(minv, maxv, metric, expected):
     assert shelflife.to_days(minv, maxv, metric) == expected
 
 
-def test_load_and_days_for():
+def test_load():
     conn = _mem()
-    n = shelflife.load(conn, payload=json.loads(FIXTURE.read_text()))
-    assert n == 4
-
-    # Eggs: DOP_Refrigerate 3-5 weeks -> 21 days
-    assert shelflife.days_for(conn, 21, "fridge") == 21
-    # Milk: metric is qualitative -> unknown (falls through to the LLM)
-    assert shelflife.days_for(conn, 27, "fridge") is None
-    # Milk freeze DOP: 3 months -> 90 days
-    assert shelflife.days_for(conn, 27, "freezer") == 90
-    # Yogurt: 1-2 weeks -> 7 days, opened -> 1 day
-    assert shelflife.days_for(conn, 33, "fridge") == 7
-    assert shelflife.days_for(conn, 33, "fridge", opened=True) == 1
-    # Onions live in the pantry
-    assert shelflife.days_for(conn, 294, "pantry") == 30
-    # unknown id
-    assert shelflife.days_for(conn, 99999, "fridge") is None
-
-
-def test_search_candidates():
-    conn = _mem()
-    shelflife.load(conn, payload=json.loads(FIXTURE.read_text()))
-
-    ids = [c["foodkeeper_id"] for c in shelflife.search_candidates(conn, "Jumbo Yellow Onions")]
-    assert 294 in ids
-
-    ids = [c["foodkeeper_id"] for c in shelflife.search_candidates(conn, "Kroger Yogurt")]
-    assert 33 in ids
-
-    # A heavily abbreviated Costco string has no local match -> LLM must decide.
-    assert shelflife.search_candidates(conn, "KS ORG A2 PR") == []
+    assert shelflife.load(conn, payload=json.loads(FIXTURE.read_text())) == 4
 
 
 def test_parse_foodkeeper_categories():

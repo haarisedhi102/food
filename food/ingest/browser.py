@@ -12,7 +12,7 @@ import json
 from contextlib import contextmanager
 from typing import Any, Iterator
 
-from playwright.sync_api import BrowserContext, Page, sync_playwright
+from playwright.sync_api import BrowserContext, Error as PlaywrightError, Page, sync_playwright
 
 from .. import config
 
@@ -54,8 +54,7 @@ def page_fetch(
     }
     if body is not None:
         opts["body"] = body
-    return page.evaluate(
-        """async ([url, opts]) => {
+    script = """async ([url, opts]) => {
             try {
                 const r = await fetch(url, opts);
                 const text = await r.text();
@@ -65,22 +64,47 @@ def page_fetch(
             } catch (e) {
                 return { status: -1, ok: false, json: null, text: String(e) };
             }
-        }""",
-        [url, opts],
-    )
+        }"""
+    # a slow navigation can destroy the JS context mid-call; let the page settle and retry
+    for attempt in range(4):
+        try:
+            return page.evaluate(script, [url, opts])
+        except PlaywrightError:
+            page.wait_for_timeout(1000 * (attempt + 1))
+    return page.evaluate(script, [url, opts])
 
 
 def ensure_login(page: Page, url: str, is_logged_in_js: str, prompt: str) -> None:
     """Navigate to `url`; if not logged in, wait for the human to finish MFA."""
     page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-    page.wait_for_timeout(1500)
-    if page.evaluate(is_logged_in_js):
+    _settle(page)  # the signed-out signal renders late on the SPA; don't probe too early
+    if _logged_in(page, is_logged_in_js):
+        page.wait_for_timeout(1500)  # let the SPA settle before the first API call
         print(f"    already logged in at {url}")
         return
     print(f"\n>>> {prompt}")
     print(f">>> A Chrome window is open at {url}. Complete login (incl. MFA), then return here.")
     input(">>> Press Enter once you are logged in... ")
     page.wait_for_timeout(2000)
+
+
+def _settle(page: Page, timeout_ms: int = 15_000) -> None:
+    """Wait for the initial navigation to finish before probing for login."""
+    try:
+        page.wait_for_load_state("networkidle", timeout=timeout_ms)
+    except PlaywrightError:  # a long-polling app may never go idle; that's fine
+        pass
+    page.wait_for_timeout(1000)
+
+
+def _logged_in(page: Page, is_logged_in_js: str, attempts: int = 6) -> bool:
+    """Evaluate the login predicate, tolerating a redirect that destroys the JS context."""
+    for _ in range(attempts):
+        try:
+            return bool(page.evaluate(is_logged_in_js))
+        except PlaywrightError:  # execution context destroyed by an in-flight navigation
+            page.wait_for_timeout(1000)
+    return False
 
 
 def archive(prefix: str, payload: Any) -> str:

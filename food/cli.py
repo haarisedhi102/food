@@ -15,6 +15,14 @@ app = typer.Typer(add_completion=False, help="Virtual fridge & pantry.")
 console = Console()
 
 
+@app.callback()
+def _startup() -> None:
+    """Wire up optional Phoenix tracing before any command runs."""
+    from . import tracing
+
+    tracing.setup()
+
+
 def _conn():
     conn = db.connect()
     db.init_db(conn)
@@ -28,18 +36,11 @@ def init_db() -> None:
     console.print(f"[green]initialised[/] {config.DB_PATH}")
 
 
-@app.command("sync")
-def sync(
-    retailer: str = typer.Option("all", help="costco | kroger | all"),
-    lookback: Optional[int] = typer.Option(None, help="Override lookback window (days)"),
-    cdp: Optional[str] = typer.Option(None, help="Attach to an existing Chrome via CDP URL"),
-) -> None:
-    """Pull receipts from Kroger and/or Costco through a real logged-in Chrome."""
+def _run_sync(conn, retailer: str, lookback: int | None, cdp: str | None) -> None:
+    """Pull, normalize and store receipts for one or more retailers."""
     from .ingest import browser as bwin, costco, kroger
 
-    conn = _conn()
     targets = ["costco", "kroger"] if retailer == "all" else [retailer]
-
     for name in targets:
         console.rule(f"[bold]{name}[/]")
         if name == "costco":
@@ -70,6 +71,17 @@ def sync(
             f"[bold]{new_r}[/] new receipts, [bold]{new_i}[/] new items"
         )
         console.print(f"    raw archived: {path}")
+
+
+@app.command("sync")
+def sync(
+    retailer: str = typer.Option("all", help="costco | kroger | all"),
+    lookback: Optional[int] = typer.Option(None, help="Override lookback window (days)"),
+    cdp: Optional[str] = typer.Option(None, help="Attach to an existing Chrome via CDP URL"),
+) -> None:
+    """Pull receipts from Kroger and/or Costco through a real logged-in Chrome."""
+    conn = _conn()
+    _run_sync(conn, retailer, lookback, cdp)
     conn.close()
 
 
@@ -118,6 +130,22 @@ def embed_ref(force: bool = typer.Option(False, help="Re-embed every row, not ju
     console.print(f"[green]embedded[/] {n} FoodKeeper rows with {embeddings.model_name()}")
 
 
+def _load_reference(conn) -> None:
+    """Load FoodKeeper and, when configured, embed it. Both steps are idempotent."""
+    from . import embeddings, reference, shelflife
+
+    n = shelflife.load(conn)
+    console.print(f"[green]loaded[/] {n} FoodKeeper rows")
+    if not embeddings.is_configured():
+        console.print(
+            "[yellow]note[/] OPENROUTER_API_KEY is not set — skipping embeddings, "
+            "search stays keyword-only."
+        )
+        return
+    m = reference.embed_corpus(conn)
+    console.print(f"[green]embedded[/] {m} FoodKeeper rows with {embeddings.model_name()}")
+
+
 @app.command("probe-kroger")
 def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
     """Diagnostic: reproduce the details batch pattern and print each response status."""
@@ -162,45 +190,92 @@ def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
             )
 
 
-@app.command("classify")
-def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
-    """Canonicalize unmapped receipt items, then ground any remaining shelf life."""
-    from . import canonicalize, llm, shelflife_agent
+def _warn_if_lexical(conn) -> None:
+    """FoodKeeper search degrades to keyword-only when the corpus isn't embedded — say so."""
+    from . import embeddings, reference
 
-    conn = _conn()
+    if embeddings.is_configured() and not reference.has_embeddings(conn):
+        console.print(
+            "[yellow]note[/] FoodKeeper embeddings are missing for this model, so search is "
+            "keyword-only. Run `food embed-ref` for hybrid search."
+        )
+
+
+def _run_classify(conn, limit: int | None = None) -> dict:
+    """Canonicalize pending items and resolve each item's shelf life, in one pass."""
+    from . import canonicalize, llm
+
+    if not conn.execute("SELECT 1 FROM shelf_life_ref LIMIT 1").fetchone():
+        console.print(
+            "[yellow]note[/] FoodKeeper reference is empty — run `food sync-ref`. "
+            "Shelf lives will fall back to the model/web."
+        )
+    _warn_if_lexical(conn)
     try:
         stats = canonicalize.canonicalize(conn, limit)
     except llm.LLMError as e:
-        conn.close()
         console.print(f"[red]{e}[/]")
         raise typer.Exit(1)
     console.print(
         f"[green]canonicalized[/] {stats['ok']} items "
-        f"({stats['batches']} batches, {stats['fallback']} unparsed)"
+        f"({stats['batches']} batches, {stats['fallback']} unparsed); "
+        f"[green]shelf life[/] {stats['resolved']} resolved"
     )
-    if config.CMD_API_KEY:
-        try:
-            g = shelflife_agent.resolve_missing(conn)
-            console.print(
-                f"[green]shelf life[/] {g['resolved']} grounded by the agent, "
-                f"{g['unresolved']} unresolved"
-            )
-        except llm.LLMError as exc:  # classification already succeeded; this is a bonus
-            console.print(f"[yellow]shelf-life agent skipped[/]: {exc}")
+    return stats
+
+
+@app.command("classify")
+def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
+    """Canonicalize unmapped receipt items, resolving each item's shelf life in one pass."""
+    conn = _conn()
+    _run_classify(conn, limit)
     conn.close()
 
 
-@app.command("stock")
-def stock(show_archived: bool = typer.Option(False, help="Include archived rows")) -> None:
+@app.command("resolve")
+def resolve_command(
+    refresh: bool = typer.Option(
+        False, "--refresh", help="Re-resolve every food item, including ones that already have a shelf life"
+    ),
+    ids: Optional[str] = typer.Option(None, help="Comma-separated product ids to limit to"),
+    limit: Optional[int] = typer.Option(None, help="Max items to resolve"),
+) -> None:
+    """(Re)resolve shelf lives for stored products — fill gaps, or refresh the whole catalogue."""
+    from . import resolve as resolver
+
+    conn = _conn()
+    _warn_if_lexical(conn)
+    sql = "SELECT id, canonical_name AS name, category, storage FROM products WHERE is_food = 1"
+    params: list = []
+    if ids:
+        selected = [int(x) for x in ids.split(",") if x.strip()]
+        sql += f" AND id IN ({','.join('?' * len(selected))})"
+        params += selected
+    elif not refresh:
+        # default: only the gaps — perishable-looking food that never got a shelf life
+        sql += " AND shelf_life_days IS NULL AND (is_perishable = 1 OR storage IN ('fridge','freezer'))"
+    sql += " ORDER BY id"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+
+    items = [dict(r) for r in conn.execute(sql, params)]
+    if not items:
+        console.print("nothing to resolve")
+        conn.close()
+        return
+    applied = resolver.apply(conn, items, resolver.resolve_batch(conn, items))
+    conn.close()
+    console.print(f"[green]resolved[/] {applied} of {len(items)} items")
+
+
+def _run_stock(conn, show_archived: bool = False) -> None:
     """Build/refresh the virtual fridge & pantry, then show what's about to go bad."""
     from . import inventory
 
-    conn = _conn()
     created = inventory.build(conn)
     res = inventory.refresh_status(conn)
     soon = inventory.expiring_soon(conn, days=3)
     active_rows = inventory.active(conn, include_archived=show_archived)
-    conn.close()
     console.print(
         f"[green]inventory[/]: {created} new rows "
         f"({res['expired']} expired, {res['archived']} archived); {len(active_rows)} active"
@@ -208,6 +283,14 @@ def stock(show_archived: bool = typer.Option(False, help="Include archived rows"
     console.print(f"[bold]expiring within 3 days[/]: {len(soon)}")
     for r in soon[:20]:
         console.print(f"   {r['expires_on']}  {r['canonical_name']}  [{r['location']}]")
+
+
+@app.command("stock")
+def stock(show_archived: bool = typer.Option(False, help="Include archived rows")) -> None:
+    """Build/refresh the virtual fridge & pantry, then show what's about to go bad."""
+    conn = _conn()
+    _run_stock(conn, show_archived)
+    conn.close()
 
 
 def _reachable_urls(host: str, port: int) -> list[str]:
@@ -228,15 +311,8 @@ def _reachable_urls(host: str, port: int) -> list[str]:
     return urls
 
 
-@app.command("serve")
-def serve(
-    port: int = typer.Option(8000, help="Port to bind"),
-    host: str = typer.Option(
-        "127.0.0.1",
-        help="Bind address. Use 0.0.0.0 to reach it from your phone over LAN/Tailscale.",
-    ),
-) -> None:
-    """Run the dashboard."""
+def _serve(host: str, port: int) -> None:
+    """Run the dashboard (blocking)."""
     import uvicorn
 
     from .web.app import app as webapp
@@ -249,6 +325,70 @@ def serve(
             "Prefer Tailscale over a public tunnel."
         )
     uvicorn.run(webapp, host=host, port=port, log_level="warning")
+
+
+@app.command("serve")
+def serve(
+    port: int = typer.Option(8000, help="Port to bind"),
+    host: str = typer.Option(
+        "127.0.0.1",
+        help="Bind address. Use 0.0.0.0 to reach it from your phone over LAN/Tailscale.",
+    ),
+) -> None:
+    """Run the dashboard."""
+    _serve(host, port)
+
+
+@app.command("bootstrap")
+def bootstrap(
+    days: int = typer.Option(90, help="Days of receipt history to pull"),
+    retailer: str = typer.Option("all", help="costco | kroger | all"),
+    skip_ref: bool = typer.Option(False, "--skip-ref", help="Skip loading/embedding FoodKeeper"),
+    cdp: Optional[str] = typer.Option(None, help="Attach to an existing Chrome via CDP URL"),
+    serve_dash: bool = typer.Option(False, "--serve", help="Start the dashboard when setup finishes"),
+    port: int = typer.Option(8000, help="Dashboard port (with --serve)"),
+    host: str = typer.Option("127.0.0.1", help="Dashboard bind address (with --serve)"),
+) -> None:
+    """Fresh setup in one shot: schema, FoodKeeper reference, `days` of receipts, classify,
+    inventory. Idempotent, so it is safe to re-run."""
+    conn = _conn()
+    if not skip_ref:
+        console.rule("[bold]reference[/]")
+        _load_reference(conn)
+    console.rule("[bold]receipts[/]")
+    _run_sync(conn, retailer, days, cdp)
+    console.rule("[bold]classify[/]")
+    _run_classify(conn)
+    console.rule("[bold]inventory[/]")
+    _run_stock(conn)
+    conn.close()
+    if serve_dash:
+        _serve(host, port)
+
+
+@app.command("refresh")
+def refresh(
+    retailer: str = typer.Option("all", help="costco | kroger | all"),
+    lookback: Optional[int] = typer.Option(None, help="Override lookback window (days)"),
+    cdp: Optional[str] = typer.Option(None, help="Attach to an existing Chrome via CDP URL"),
+    serve_dash: bool = typer.Option(
+        False, "--serve", help="Start the dashboard when the update finishes"
+    ),
+    port: int = typer.Option(8000, help="Dashboard port (with --serve)"),
+    host: str = typer.Option("127.0.0.1", help="Dashboard bind address (with --serve)"),
+) -> None:
+    """Incremental update for an interval/cron: pull new receipts, classify, rebuild inventory.
+    Assumes the reference is already loaded (see `bootstrap`)."""
+    conn = _conn()
+    console.rule("[bold]receipts[/]")
+    _run_sync(conn, retailer, lookback, cdp)
+    console.rule("[bold]classify[/]")
+    _run_classify(conn)
+    console.rule("[bold]inventory[/]")
+    _run_stock(conn)
+    conn.close()
+    if serve_dash:
+        _serve(host, port)
 
 
 @app.command("digest")

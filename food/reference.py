@@ -8,14 +8,14 @@ decides which FoodKeeper row, if any, grounds its shelf life. Retrieval runs on 
 A LangChain `EnsembleRetriever` fuses two retrievers with reciprocal rank fusion: a
 positive-overlap lexical retriever (only docs that actually share a token, so no zero-score
 padding) and a vector retriever over the embeddings persisted in `shelf_life_embedding`.
-`match_batch` then lets one LLM call pick the final row from each shortlist. Without
-`OPENROUTER_API_KEY` (or before `embed-ref`) it degrades to the lexical retriever alone.
+`search_with` produces one item's shortlist; choosing the row (and the shelf life) is the
+resolver's job (`resolve.py`). Without `OPENROUTER_API_KEY` (or before `embed-ref`) it
+degrades to the lexical retriever alone.
 """
 
 from __future__ import annotations
 
 import array
-import json
 import sqlite3
 from typing import Any
 
@@ -24,7 +24,7 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_openai import OpenAIEmbeddings
 
-from . import config, embeddings, llm, shelflife
+from . import config, embeddings, shelflife
 
 
 def _doc_text(row: sqlite3.Row) -> str:
@@ -129,17 +129,22 @@ class _SqliteVectorRetriever(BaseRetriever):
     """Vector retriever over the embeddings persisted in `shelf_life_embedding`.
 
     Brute-force cosine — the FoodKeeper corpus is small, so an ANN index would be noise.
+    Query vectors can be supplied up front (`query_vectors`) so a batch of items is embedded
+    in one call instead of an API round-trip per name.
     """
 
     conn: Any
     embedding: Any
     model: str
     k: int = 8
+    query_vectors: dict[str, list[float]] = {}
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: Any = None
     ) -> list[Document]:
-        q = self.embedding.embed_query(query)
+        q = self.query_vectors.get(query)
+        if q is None:
+            q = self.embedding.embed_query(query)
         rows = list(
             self.conn.execute(
                 "SELECT foodkeeper_id, vector FROM shelf_life_embedding WHERE model = ?",
@@ -164,7 +169,23 @@ class _SqliteVectorRetriever(BaseRetriever):
         ]
 
 
-def build_retriever(conn: sqlite3.Connection, model: str | None = None, limit: int = 8):
+def has_embeddings(conn: sqlite3.Connection, model: str | None = None) -> bool:
+    """Whether the FoodKeeper corpus is embedded for this model (i.e. semantic search is live)."""
+    model = model or embeddings.model_name()
+    return (
+        conn.execute(
+            "SELECT 1 FROM shelf_life_embedding WHERE model = ? LIMIT 1", (model,)
+        ).fetchone()
+        is not None
+    )
+
+
+def build_retriever(
+    conn: sqlite3.Connection,
+    model: str | None = None,
+    limit: int = 8,
+    query_vectors: dict[str, list[float]] | None = None,
+):
     """Build the hybrid retriever, or the lexical one alone when embeddings are
     unavailable. Returns None when the reference table is empty."""
     model = model or embeddings.model_name()
@@ -173,15 +194,15 @@ def build_retriever(conn: sqlite3.Connection, model: str | None = None, limit: i
     lexical = _LexicalRetriever(conn=conn, k=limit * 2)
     if not embeddings.is_configured():
         return lexical
-
-    rows = list(
-        conn.execute("SELECT foodkeeper_id FROM shelf_life_embedding WHERE model = ?", (model,))
-    )
-    if not rows:
+    if not has_embeddings(conn, model):
         return lexical  # nothing embedded yet — don't pay for a query embedding
 
     vector = _SqliteVectorRetriever(
-        conn=conn, embedding=_embeddings(model), model=model, k=limit * 2
+        conn=conn,
+        embedding=_embeddings(model),
+        model=model,
+        k=limit * 2,
+        query_vectors=query_vectors or {},
     )
     return EnsembleRetriever(retrievers=[lexical, vector], weights=[0.5, 0.5])
 
@@ -213,67 +234,18 @@ def search_with(
     return _rows(conn, _fids(retriever.invoke(text))[:limit])
 
 
-def search(
-    conn: sqlite3.Connection, text: str, limit: int = 8, model: str | None = None
-) -> list[dict]:
-    """Single-shot hybrid search (builds a retriever per call). Prefer `build_retriever`
-    + `search_with` when matching many items in a loop."""
-    return search_with(conn, build_retriever(conn, model, limit), text, limit)
+def _query_vectors(
+    conn: sqlite3.Connection, model: str, names: list[str]
+) -> dict[str, list[float]]:
+    """Embed every query name in one batched call.
 
-
-def match(conn: sqlite3.Connection, name: str, model: str | None = None) -> dict | None:
-    """The FoodKeeper row that grounds a *canonical* product name, or None (top hybrid hit,
-    no rerank). Prefer `match_batch` when grounding several names at once."""
-    if not name:
-        return None
-    hits = search(conn, name, limit=1, model=model)
-    return hits[0] if hits else None
-
-
-MATCH_SYSTEM = """You map grocery items to the single best FoodKeeper reference row.
-For each item you receive a readable name and a shortlist of FoodKeeper candidates
-(id + name). Pick the id whose row best matches the item, or null if none fit.
-Respond with ONLY JSON: {"picks": {"<item name>": <id or null>}}"""
-
-
-def match_batch(
-    conn: sqlite3.Connection,
-    names: list[str],
-    model: str | None = None,
-    topn: int = 5,
-) -> dict[str, int | None]:
-    """Ground a batch of canonical names in FoodKeeper: hybrid retrieval gives each item a
-    shortlist, and one LLM call picks the final row. Returns {name: foodkeeper_id | None}."""
-    uniq = list(dict.fromkeys(n for n in names if n))
-    if not uniq:
+    Embedding per name is an API round-trip each (seconds apiece); batching them into a
+    single `embed_documents` call is the difference between minutes and seconds.
+    """
+    if not embeddings.is_configured():
         return {}
-    retriever = build_retriever(conn, model, limit=topn)
-    cand = {n: search_with(conn, retriever, n, topn) for n in uniq}
-    if not any(cand.values()):
-        return {n: None for n in uniq}
-
-    payload = [
-        {
-            "item": n,
-            "candidates": [{"id": c["foodkeeper_id"], "name": c["name"]} for c in cand[n]],
-        }
-        for n in uniq
-    ]
-    try:
-        data = llm.chat_json(
-            conn, "match", MATCH_SYSTEM, json.dumps({"items": payload}, ensure_ascii=False)
-        )
-        picks = data.get("picks") or {}
-    except Exception:  # noqa: BLE001 - a failed rerank falls back to the top hybrid hit
-        picks = {}
-
-    out: dict[str, int | None] = {}
-    for n in uniq:
-        pick = picks.get(n)
-        if isinstance(pick, str) and pick.strip().isdigit():
-            pick = int(pick)
-        if isinstance(pick, int) and any(c["foodkeeper_id"] == pick for c in cand[n]):
-            out[n] = pick
-        else:
-            out[n] = cand[n][0]["foodkeeper_id"] if cand[n] else None
-    return out
+    if conn.execute(
+        "SELECT 1 FROM shelf_life_embedding WHERE model = ? LIMIT 1", (model,)
+    ).fetchone() is None:
+        return {}
+    return dict(zip(names, _embeddings(model).embed_documents(names)))

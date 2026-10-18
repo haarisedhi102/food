@@ -124,7 +124,7 @@ def active(conn: sqlite3.Connection, include_archived: bool = False) -> list[dic
     where = "" if include_archived else "AND i.status IN ('active', 'partial', 'expired')"
     rows = conn.execute(
         f"""
-        SELECT i.*, p.canonical_name, p.brand, p.category, p.is_perishable, p.shelf_life_source
+        SELECT i.*, p.canonical_name, p.brand, p.category, p.pkg_size, p.is_perishable, p.shelf_life_source
         FROM inventory i
         JOIN products p ON p.id = i.product_id
         WHERE 1 = 1 {where}
