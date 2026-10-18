@@ -64,23 +64,37 @@ the OpenAI client and the LangChain stack are traced.
 ## Use
 
 ```bash
-uv run food sync-ref                  # load the FoodKeeper shelf-life table (once)
-uv run food embed-ref                 # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
-uv run food sync --retailer costco    # log in when Chrome opens (MFA)
-uv run food sync --retailer kroger
-uv run food classify                  # canonicalize + resolve each item's shelf life
-uv run food stock                     # build/refresh the fridge & pantry
-uv run food status                    # counts, LLM calls today
-uv run food digest                    # "use it or lose it" suggestions
-uv run food serve                     # dashboard at http://127.0.0.1:8000
+# Fresh setup in one shot: FoodKeeper reference + `--days` of receipts + classify + inventory.
+uv run food bootstrap --days 90        # add --serve to open the dashboard when it finishes
+
+# Incremental update — safe to re-run on an interval (cron / launchd / systemd timer).
+uv run food refresh
+
+uv run food serve                      # dashboard at http://127.0.0.1:8000
+uv run food status                     # counts, LLM calls today
+uv run food digest                     # "use it or lose it" suggestions
 ```
 
-Refresh loop: `food sync && food classify && food stock`.
+`bootstrap` and `refresh` both open a real Chrome to sync receipts, so neither is fully
+unattended: log in once (MFA) and the persistent profile is reused. On an interval, prefer
+`food refresh` (sync + classify + stock) — it only pulls what's new.
+
+The steps are also available individually:
+
+```bash
+uv run food sync-ref                   # load the FoodKeeper shelf-life table (once)
+uv run food embed-ref                  # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
+uv run food sync --retailer costco     # log in when Chrome opens (MFA)
+uv run food classify                   # canonicalize + resolve each item's shelf life
+uv run food stock                      # build/refresh the fridge & pantry
+```
 
 ### Commands
 
 | Command | What it does |
 |---|---|
+| `bootstrap [--days N] [--skip-ref] [--serve]` | Fresh setup: reference + N days of receipts + classify + stock |
+| `refresh [--lookback N] [--serve]` | Incremental sync + classify + stock, for an interval |
 | `sync-ref` | (Re)load USDA FoodKeeper into `shelf_life_ref` |
 | `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) search |
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |

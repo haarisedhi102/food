@@ -22,7 +22,8 @@
         {{ r.canonical_name }}
       </a>
       <div class="text-[11px] text-slate-400">
-        x{{ '%g'|format(r.remaining_qty) }}{% if r.expires_on %} · {{ r.expires_on }}{% endif %}
+        {%- set meta = [r.brand, r.pkg_size] | reject('none') | join(' · ') -%}
+        {% if meta %}<span class="text-slate-500">{{ meta }} · </span>{% endif %}x{{ '%g'|format(r.remaining_qty) }}{% if r.expires_on %} · {{ r.expires_on }}{% endif %}
       </div>
     </div>
     <div class="flex items-center gap-1 shrink-0">
