@@ -51,19 +51,24 @@ For each item decide the shelf life to use and where it comes from:
   food-safety agencies, manufacturers);
 - your own knowledge, when you are already confident.
 
-Then write a short note per item, quoting its id: the shelf life in days, the source (a
-FoodKeeper id, the web, or your own knowledge), and the storage it applies to. Do NOT return
-JSON — just notes."""
+Then write a short note per item, quoting its id: the shelf life in days, the source (the
+FoodKeeper row used, the web, or your own knowledge), and the storage it applies to. Do NOT
+return JSON — just notes."""
 
 SYNTH_SYSTEM = """You convert grocery shelf-life research notes into one structured verdict per
 item. Return one entry per item, echoing that item's `id` in `item_id`. For each:
 - source: "foodkeeper" if a FoodKeeper row was used, else "web" or "llm";
-- foodkeeper_id: that row's id when source is foodkeeper, else null;
 - shelf_life_days: YOUR best shelf life in whole days. Treat FoodKeeper as a slightly preferred
   source, not the authority — its figures can be unrealistic (a row listing only a 3-month
   freezer figure does not mean 90 days of fridge life). Use judgement; null only when the item
   is non-perishable;
-- is_perishable: false for dry goods, canned, spices."""
+- is_perishable: false for dry goods, canned, spices.
+
+Examples (item id, name, storage -> verdict):
+  12 "Whole Milk", fridge          -> {"item_id": 12, "source": "foodkeeper", "shelf_life_days": 7, "is_perishable": true}
+  30 "Jasmine Rice", pantry        -> {"item_id": 30, "source": "foodkeeper", "shelf_life_days": null, "is_perishable": false}
+  41 "Unsweetened Oatmilk", fridge -> {"item_id": 41, "source": "web", "shelf_life_days": 7, "is_perishable": true}
+  55 "Roma Tomato", counter        -> {"item_id": 55, "source": "llm", "shelf_life_days": 7, "is_perishable": true}"""
 
 
 class ItemVerdict(BaseModel):
@@ -71,9 +76,6 @@ class ItemVerdict(BaseModel):
 
     item_id: int = Field(description="the item's id, echoed exactly")
     source: Literal["foodkeeper", "web", "llm"] = "llm"
-    foodkeeper_id: int | None = Field(
-        default=None, description="the FoodKeeper row id, when source is foodkeeper"
-    )
     shelf_life_days: int | None = Field(
         default=None, description="whole days; null when the item is non-perishable"
     )
@@ -121,7 +123,6 @@ def _structured():
 
 def _candidate(row: dict) -> dict:
     return {
-        "foodkeeper_id": row["foodkeeper_id"],
         "name": row["name"],
         "subtitle": row.get("subtitle"),
         "pantry_days": row.get("pantry_days"),
@@ -166,10 +167,9 @@ def resolve_batch(
 ) -> dict[int, ItemVerdict]:
     """Resolve shelf lives for a batch of items, one run per `RESOLVE_CHUNK`.
 
-    `items` are {"id", "name", "category", "storage"} dicts. Returns {id: ItemVerdict}; any
-    `foodkeeper_id` is validated against that item's shortlist (a hallucinated id downgrades to
-    the model's own answer). Chunking keeps each request small; each phase is retried on a
-    transient error, and any item missing from a chunk's verdicts is re-asked once.
+    `items` are {"id", "name", "category", "storage"} dicts. Returns {id: ItemVerdict}. Chunking
+    keeps each request small; each phase is retried on a transient error, and any item missing
+    from a chunk's verdicts is re-asked once.
     """
     items = [it for it in items if it.get("name") and it.get("id") is not None]
     if not items:
@@ -195,7 +195,7 @@ def _resolve_chunk(
     if verdict is None:
         return {}
 
-    out = _collect(verdict, chunk, shortlists)
+    out = _collect(verdict, chunk)
 
     # completeness: re-ask once for anything the model omitted
     missing = [it for it in chunk if it["id"] not in out]
@@ -206,24 +206,14 @@ def _resolve_chunk(
             len(missing),
         )
         if retry is not None:
-            out.update(_collect(retry, missing, shortlists))
+            out.update(_collect(retry, missing))
     return out
 
 
-def _collect(
-    verdict: BatchVerdict, items: list[dict], shortlists: dict[int, list[dict]]
-) -> dict[int, ItemVerdict]:
-    """Index a verdict by id, dropping unknown ids and mistrusted FoodKeeper ids."""
+def _collect(verdict: BatchVerdict, items: list[dict]) -> dict[int, ItemVerdict]:
+    """Index a verdict by id, dropping any id that isn't in the chunk."""
     wanted = {it["id"] for it in items}
-    out: dict[int, ItemVerdict] = {}
-    for v in verdict.items:
-        if v.item_id not in wanted:
-            continue
-        ids = {c["foodkeeper_id"] for c in shortlists.get(v.item_id, [])}
-        if v.source == "foodkeeper" and v.foodkeeper_id not in ids:
-            v = v.model_copy(update={"foodkeeper_id": None, "source": "llm"})
-        out[v.item_id] = v
-    return out
+    return {v.item_id: v for v in verdict.items if v.item_id in wanted}
 
 
 def _retry(fn: Callable[[], T], phase: str, count: int) -> T | None:
@@ -262,13 +252,12 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemV
         it = by_id.get(pid)
         if it is None:
             continue
-        fid = v.foodkeeper_id if v.source == "foodkeeper" else None
         days = v.shelf_life_days
         conn.execute(
             """UPDATE products
                SET shelf_life_days = ?, shelf_life_days_opened = ?,
                    storage = COALESCE(?, storage), is_perishable = ?,
-                   shelf_life_source = ?, foodkeeper_id = ?, llm_confidence = ?
+                   shelf_life_source = ?, llm_confidence = ?
                WHERE id = ?""",
             (
                 days,
@@ -276,7 +265,6 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemV
                 v.storage,
                 int(v.is_perishable),
                 v.source,
-                fid,
                 v.confidence,
                 pid,
             ),

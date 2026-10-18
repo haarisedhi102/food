@@ -24,9 +24,6 @@
         source: {{ p.shelf_life_source }}
       </span>
     {% endif %}
-    {% if p.foodkeeper_id %}
-      <span class="px-2 py-1 rounded bg-slate-100">FoodKeeper #{{ p.foodkeeper_id }}</span>
-    {% endif %}
     <span class="px-2 py-1 rounded bg-slate-100">confidence {{ p.llm_confidence }}</span>
   </div>
 

@@ -50,26 +50,23 @@ def test_shortlists_enrich_candidates_with_shelf_life():
     conn = _mem()
     shortlists = resolve._shortlists(conn, [{"id": 1, "name": "Jumbo Yellow Onions"}], None, 5)
     top = shortlists[1][0]
-    assert top["foodkeeper_id"] == 294
-    assert "pantry_days" in top and "after_opening_days" in top
+    assert top["name"] == "Onions"
+    assert top["pantry_days"] == 30 and "after_opening_days" in top
 
 
-def test_resolve_batch_keys_by_id_and_drops_a_bogus_foodkeeper_id(monkeypatch):
+def test_resolve_batch_keeps_only_ids_from_the_chunk(monkeypatch):
     conn = _mem()
     verdict = _batch(
-        {"item_id": 10, "source": "foodkeeper", "foodkeeper_id": 294, "shelf_life_days": 30},
-        # an id that is not in the shortlist must not be trusted
-        {"item_id": 11, "source": "foodkeeper", "foodkeeper_id": 999999, "shelf_life_days": 10},
+        {"item_id": 10, "source": "foodkeeper", "shelf_life_days": 30},
+        {"item_id": 99, "source": "llm", "shelf_life_days": 5},  # not in the chunk
     )
     monkeypatch.setattr(resolve, "_research_agent", lambda: _FakeResearch())
     monkeypatch.setattr(resolve, "_structured", lambda: _FakeStructured(verdict))
 
-    out = resolve.resolve_batch(
-        conn, [{"id": 10, "name": "Jumbo Yellow Onions"}, {"id": 11, "name": "Mystery Sauce"}]
-    )
+    out = resolve.resolve_batch(conn, [{"id": 10, "name": "Jumbo Yellow Onions"}])
 
-    assert out[10].foodkeeper_id == 294 and out[10].source == "foodkeeper"
-    assert out[11].foodkeeper_id is None and out[11].source == "llm"
+    assert set(out) == {10}
+    assert out[10].source == "foodkeeper" and out[10].shelf_life_days == 30
 
 
 def test_resolve_batch_reasks_for_an_item_the_model_omitted(monkeypatch):
@@ -101,15 +98,13 @@ def test_apply_keeps_the_model_number_for_a_foodkeeper_verdict():
 
     # FoodKeeper row 21 says 3 weeks, but the model judges 10 days — the model wins
     verdicts = {
-        pid: resolve.ItemVerdict(
-            item_id=pid, source="foodkeeper", foodkeeper_id=21, shelf_life_days=10
-        )
+        pid: resolve.ItemVerdict(item_id=pid, source="foodkeeper", shelf_life_days=10)
     }
     resolve.apply(conn, [{"id": pid, "name": "Eggs", "storage": "fridge"}], verdicts)
 
     p = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
     assert p["shelf_life_days"] == 10
-    assert p["shelf_life_source"] == "foodkeeper" and p["foodkeeper_id"] == 21
+    assert p["shelf_life_source"] == "foodkeeper"
     inv = conn.execute("SELECT expires_on FROM inventory WHERE product_id = ?", (pid,)).fetchone()
     assert inv["expires_on"] == "2026-10-20"  # 2026-10-10 + 10
 
