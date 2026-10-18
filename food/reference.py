@@ -169,6 +169,17 @@ class _SqliteVectorRetriever(BaseRetriever):
         ]
 
 
+def has_embeddings(conn: sqlite3.Connection, model: str | None = None) -> bool:
+    """Whether the FoodKeeper corpus is embedded for this model (i.e. semantic search is live)."""
+    model = model or embeddings.model_name()
+    return (
+        conn.execute(
+            "SELECT 1 FROM shelf_life_embedding WHERE model = ? LIMIT 1", (model,)
+        ).fetchone()
+        is not None
+    )
+
+
 def build_retriever(
     conn: sqlite3.Connection,
     model: str | None = None,
@@ -183,11 +194,7 @@ def build_retriever(
     lexical = _LexicalRetriever(conn=conn, k=limit * 2)
     if not embeddings.is_configured():
         return lexical
-
-    rows = list(
-        conn.execute("SELECT foodkeeper_id FROM shelf_life_embedding WHERE model = ?", (model,))
-    )
-    if not rows:
+    if not has_embeddings(conn, model):
         return lexical  # nothing embedded yet — don't pay for a query embedding
 
     vector = _SqliteVectorRetriever(

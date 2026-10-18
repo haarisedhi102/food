@@ -170,12 +170,24 @@ def probe_kroger(cdp: Optional[str] = typer.Option(None)) -> None:
             )
 
 
+def _warn_if_lexical(conn) -> None:
+    """FoodKeeper search degrades to keyword-only when the corpus isn't embedded — say so."""
+    from . import embeddings, reference
+
+    if embeddings.is_configured() and not reference.has_embeddings(conn):
+        console.print(
+            "[yellow]note[/] FoodKeeper embeddings are missing for this model, so search is "
+            "keyword-only. Run `food embed-ref` for hybrid search."
+        )
+
+
 @app.command("classify")
 def classify(limit: Optional[int] = typer.Option(None, help="Max items to canonicalize")) -> None:
     """Canonicalize unmapped receipt items, resolving each item's shelf life in one pass."""
     from . import canonicalize, llm
 
     conn = _conn()
+    _warn_if_lexical(conn)
     try:
         stats = canonicalize.canonicalize(conn, limit)
     except llm.LLMError as e:
@@ -188,6 +200,42 @@ def classify(limit: Optional[int] = typer.Option(None, help="Max items to canoni
         f"[green]shelf life[/] {stats['resolved']} resolved"
     )
     conn.close()
+
+
+@app.command("resolve")
+def resolve_command(
+    refresh: bool = typer.Option(
+        False, "--refresh", help="Re-resolve every food item, including ones that already have a shelf life"
+    ),
+    ids: Optional[str] = typer.Option(None, help="Comma-separated product ids to limit to"),
+    limit: Optional[int] = typer.Option(None, help="Max items to resolve"),
+) -> None:
+    """(Re)resolve shelf lives for stored products — fill gaps, or refresh the whole catalogue."""
+    from . import resolve as resolver
+
+    conn = _conn()
+    _warn_if_lexical(conn)
+    sql = "SELECT id, canonical_name AS name, category, storage FROM products WHERE is_food = 1"
+    params: list = []
+    if ids:
+        selected = [int(x) for x in ids.split(",") if x.strip()]
+        sql += f" AND id IN ({','.join('?' * len(selected))})"
+        params += selected
+    elif not refresh:
+        # default: only the gaps — perishable-looking food that never got a shelf life
+        sql += " AND shelf_life_days IS NULL AND (is_perishable = 1 OR storage IN ('fridge','freezer'))"
+    sql += " ORDER BY id"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+
+    items = [dict(r) for r in conn.execute(sql, params)]
+    if not items:
+        console.print("nothing to resolve")
+        conn.close()
+        return
+    applied = resolver.apply(conn, items, resolver.resolve_batch(conn, items))
+    conn.close()
+    console.print(f"[green]resolved[/] {applied} of {len(items)} items")
 
 
 @app.command("stock")

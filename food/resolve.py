@@ -5,12 +5,11 @@ Two phases per chunk of items:
 1. **Research** — a tool-calling agent receives each item with its FoodKeeper candidate
    shortlist (hybrid retrieval, each candidate enriched with its shelf-life figures) and uses
    `web_search` only where no row fits. It returns prose notes.
-2. **Synthesis** — a forced structured-output call (`with_structured_output`) turns those notes
-   into one verdict per item. The schema is the only tool bound, so the model cannot answer in
-   prose — that is what guarantees we get structured output back.
+2. **Synthesis** — a forced tool call (the verdict schema bound as the only tool, with
+   `tool_choice="required"`) turns those notes into one verdict per item. We accept only a
+   tool call — never prose — and re-ask if the model doesn't produce one.
 
-Verdicts are keyed by product id (not name), missing items are re-asked once, and a
-`foodkeeper` verdict takes its number from the validated row rather than the model. Each
+Verdicts are keyed by product id (not name), and any item a chunk omits is re-asked once. Each
 verdict carries its source:
 
   foodkeeper  the picked FoodKeeper row fits (its id is kept for provenance)
@@ -30,7 +29,7 @@ from typing import Any, Callable, Literal, TypeVar
 
 from langchain.agents import create_agent
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from . import embeddings, llm, reference
 
@@ -112,13 +111,14 @@ def _research_agent():
 
 
 def _structured():
-    """Phase 2: structured output with the schema as the only (forced) tool.
+    """Phase 2: the verdict schema bound as the *only* tool, with `tool_choice="required"`.
 
-    The Command Code provider does not honour native `json_schema` response format, so we force
-    a function call instead — the schema tool is the only option, so the model cannot reply in
-    prose.
+    Measured on the Command Code provider: `with_structured_output(method="function_calling")`
+    never produces a tool call here (it adds `parallel_tool_calls=False`, which the provider
+    mishandles), and no configuration is 100% reliable — so `_synthesize` requires a tool call
+    and the caller re-asks when it doesn't get one. Prose is never accepted.
     """
-    return llm.chat_model().with_structured_output(BatchVerdict, method="function_calling")
+    return llm.chat_model().bind_tools([BatchVerdict], tool_choice="required")
 
 
 def _candidate(row: dict) -> dict:
@@ -217,13 +217,16 @@ def _collect(verdict: BatchVerdict, items: list[dict]) -> dict[int, ItemVerdict]
 
 
 def _retry(fn: Callable[[], T], phase: str, count: int) -> T | None:
-    """Run `fn`, retrying a few times on a transient provider error."""
+    """Run `fn`, retrying a few times on a transient error *or* when it yields nothing."""
+    last: object = "no result"
     for attempt in range(ATTEMPTS):
         try:
-            return fn()
+            result = fn()
+            if result is not None:
+                return result
         except Exception as e:  # noqa: BLE001 - transient upstream error, retry
             last = e
-            time.sleep(1.5 * (attempt + 1))
+        time.sleep(1.5 * (attempt + 1))
     print(f"    shelf-life {phase} failed ({count} items): {last}")
     return None
 
@@ -238,10 +241,16 @@ def _research(payload: list[dict]) -> str:
 
 
 def _synthesize(payload: list[dict], findings: str) -> BatchVerdict | None:
-    """Phase 2: force the structured verdict from the items, candidates and notes."""
+    """Phase 2: get the structured verdict — by tool call only, or None to trigger a re-ask."""
     user = json.dumps({"items": payload, "research_notes": findings}, ensure_ascii=False)
     result = _structured().invoke([("system", SYNTH_SYSTEM), ("user", user)])
-    return result if isinstance(result, BatchVerdict) else None
+    calls = getattr(result, "tool_calls", None) or []
+    if not calls:  # the model answered in prose: refuse it, let the caller re-ask
+        return None
+    try:
+        return BatchVerdict(**calls[0]["args"])
+    except (ValidationError, TypeError):
+        return None
 
 
 def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemVerdict]) -> int:

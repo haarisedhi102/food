@@ -86,6 +86,7 @@ Refresh loop: `food sync && food classify && food stock`.
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
 | `classify` | Canonicalize unmapped items and resolve each item's shelf life (batched, cached) |
+| `resolve [--refresh] [--ids …] [--limit N]` | (Re)resolve shelf lives for stored products; default fills only the gaps |
 | `stock` | Build/refresh inventory and show what's expiring |
 | `status` | Counts and per-purpose LLM usage |
 | `digest` | LLM "use it or lose it" plan |

@@ -32,14 +32,25 @@ class _FakeResearch:
         return {"messages": [_FakeMsg()]}
 
 
+class _FakeToolMessage:
+    """Stands in for the AIMessage phase 2 returns: the verdict arrives as a tool call."""
+
+    def __init__(self, verdict):
+        self.tool_calls = (
+            [{"name": "BatchVerdict", "args": verdict.model_dump(), "id": "call_1"}]
+            if verdict is not None
+            else []
+        )
+
+
 class _FakeStructured:
-    """Returns queued verdicts, one per invoke, so the missing-item re-ask can be tested."""
+    """Returns queued verdicts as tool calls, one per invoke, so the re-ask can be tested."""
 
     def __init__(self, *verdicts):
         self._queue = list(verdicts)
 
     def invoke(self, messages):
-        return self._queue.pop(0) if self._queue else None
+        return _FakeToolMessage(self._queue.pop(0) if self._queue else None)
 
 
 def _batch(*items):
