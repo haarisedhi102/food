@@ -15,6 +15,14 @@ app = typer.Typer(add_completion=False, help="Virtual fridge & pantry.")
 console = Console()
 
 
+@app.callback()
+def _startup() -> None:
+    """Wire up optional Phoenix tracing before any command runs."""
+    from . import tracing
+
+    tracing.setup()
+
+
 def _conn():
     conn = db.connect()
     db.init_db(conn)
