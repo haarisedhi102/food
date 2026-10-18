@@ -1,0 +1,36 @@
+name: FoodCapture
+options:
+  bundleIdPrefix: ai.commandcode.food
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+targets:
+  FoodCapture:
+    type: application
+    platform: iOS
+    sources:
+      - path: FoodCapture
+    info:
+      path: FoodCapture/Info.plist
+      properties:
+        CFBundleDisplayName: Food Capture
+        CFBundleShortVersionString: "0.1.0"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleURLTypes:
+          - CFBundleURLName: ai.commandcode.food.capture
+            CFBundleURLSchemes:
+              - foodcapture
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.commandcode.food.capture
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        CODE_SIGNING_ALLOWED: NO
