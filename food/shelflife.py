@@ -1,8 +1,8 @@
-"""Shelf-life resolution.
+"""FoodKeeper reference data.
 
-Primary source is the USDA FoodKeeper dataset (public domain). Where FoodKeeper has a clear
-match we take its value; otherwise the LLM supplies an estimate shaped like a FoodKeeper row
-(handled in `canonicalize.py`). New sources slot into `resolve()` ahead of the LLM step.
+Loads the USDA FoodKeeper dataset (public domain) into `shelf_life_ref` and converts its
+Min/Max/Metric triples to days. Choosing a row and a shelf life for an item is the resolver's
+job (`resolve.py`).
 
 Units matter: FoodKeeper's Min/Max numbers are meaningless without the companion `*_Metric`
 column (Days | Weeks | Months | Years | When Ripe | Indefinitely | Not Recommended |
@@ -138,43 +138,3 @@ def _tokens(text: str | None) -> set[str]:
             if len(w) > 2:
                 out.add(w)
     return out
-
-
-def search_candidates(conn: sqlite3.Connection, text: str, limit: int = 8) -> list[dict]:
-    """Local, free retrieval: score FoodKeeper rows by keyword/name token overlap.
-
-    The shortlist is handed to the LLM, which picks the right row (or none).
-    """
-    query = _tokens(text)
-    if not query:
-        return []
-    scored = []
-    for row in conn.execute("SELECT * FROM shelf_life_ref"):
-        hay = _tokens(row["name"]) | _tokens(row["subtitle"]) | _tokens(row["keywords"])
-        score = len(query & hay)
-        if score:
-            scored.append((score, row))
-    scored.sort(key=lambda t: (-t[0], t[1]["foodkeeper_id"]))
-    return [dict(r) for _, r in scored[:limit]]
-
-
-STORAGE_COLUMN = {
-    "freezer": "dop_freeze_days",
-    "pantry": "pantry_days",
-    "fridge": "dop_refrigerate_days",
-    "counter": "dop_refrigerate_days",
-}
-
-
-def days_for(
-    conn: sqlite3.Connection, foodkeeper_id: int, storage: str = "fridge", opened: bool = False
-) -> int | None:
-    row = conn.execute(
-        "SELECT * FROM shelf_life_ref WHERE foodkeeper_id = ?", (foodkeeper_id,)
-    ).fetchone()
-    if row is None:
-        return None
-    if opened and row["refrigerate_after_opening_days"]:
-        return row["refrigerate_after_opening_days"]
-    col = STORAGE_COLUMN.get(storage, "dop_refrigerate_days")
-    return row[col]

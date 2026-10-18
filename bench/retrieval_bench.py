@@ -1,7 +1,9 @@
-"""Retrieval benchmark v2 — pick the FoodKeeper matcher we ship.
+"""Retrieval benchmark v2 — measures the FoodKeeper *retriever*.
 
 Scores by **exact** FoodKeeper id (a gold item may accept several ids), not substring, so
-near-misses no longer count as hits. Compares:
+near-misses no longer count as hits. This is a proxy for retrieval quality only: the shipped
+pipeline (`resolve.py`) no longer picks a row by id — an agent decides the shelf life and the
+row is just a hint — so these numbers do not describe end-to-end accuracy. Compares:
 
   * query source : raw receipt description vs canonical name
   * retriever    : positive-overlap lexical | semantic cosine | hybrid RRF

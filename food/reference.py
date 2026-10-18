@@ -8,14 +8,14 @@ decides which FoodKeeper row, if any, grounds its shelf life. Retrieval runs on 
 A LangChain `EnsembleRetriever` fuses two retrievers with reciprocal rank fusion: a
 positive-overlap lexical retriever (only docs that actually share a token, so no zero-score
 padding) and a vector retriever over the embeddings persisted in `shelf_life_embedding`.
-`match_batch` then lets one LLM call pick the final row from each shortlist. Without
-`OPENROUTER_API_KEY` (or before `embed-ref`) it degrades to the lexical retriever alone.
+`search_with` produces one item's shortlist; choosing the row (and the shelf life) is the
+resolver's job (`resolve.py`). Without `OPENROUTER_API_KEY` (or before `embed-ref`) it
+degrades to the lexical retriever alone.
 """
 
 from __future__ import annotations
 
 import array
-import json
 import sqlite3
 from typing import Any
 
@@ -24,7 +24,7 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_openai import OpenAIEmbeddings
 
-from . import config, embeddings, llm, shelflife
+from . import config, embeddings, shelflife
 
 
 def _doc_text(row: sqlite3.Row) -> str:
@@ -227,29 +227,6 @@ def search_with(
     return _rows(conn, _fids(retriever.invoke(text))[:limit])
 
 
-def search(
-    conn: sqlite3.Connection, text: str, limit: int = 8, model: str | None = None
-) -> list[dict]:
-    """Single-shot hybrid search (builds a retriever per call). Prefer `build_retriever`
-    + `search_with` when matching many items in a loop."""
-    return search_with(conn, build_retriever(conn, model, limit), text, limit)
-
-
-def match(conn: sqlite3.Connection, name: str, model: str | None = None) -> dict | None:
-    """The FoodKeeper row that grounds a *canonical* product name, or None (top hybrid hit,
-    no rerank). Prefer `match_batch` when grounding several names at once."""
-    if not name:
-        return None
-    hits = search(conn, name, limit=1, model=model)
-    return hits[0] if hits else None
-
-
-MATCH_SYSTEM = """You map grocery items to the single best FoodKeeper reference row.
-For each item you receive a readable name and a shortlist of FoodKeeper candidates
-(id + name). Pick the id whose row best matches the item, or null if none fit.
-Respond with ONLY JSON: {"picks": {"<item name>": <id or null>}}"""
-
-
 def _query_vectors(
     conn: sqlite3.Connection, model: str, names: list[str]
 ) -> dict[str, list[float]]:
@@ -265,49 +242,3 @@ def _query_vectors(
     ).fetchone() is None:
         return {}
     return dict(zip(names, _embeddings(model).embed_documents(names)))
-
-
-def match_batch(
-    conn: sqlite3.Connection,
-    names: list[str],
-    model: str | None = None,
-    topn: int = 5,
-) -> dict[str, int | None]:
-    """Ground a batch of canonical names in FoodKeeper: hybrid retrieval gives each item a
-    shortlist, and one LLM call picks the final row. Returns {name: foodkeeper_id | None}."""
-    uniq = list(dict.fromkeys(n for n in names if n))
-    if not uniq:
-        return {}
-    model = model or embeddings.model_name()
-    retriever = build_retriever(
-        conn, model, limit=topn, query_vectors=_query_vectors(conn, model, uniq)
-    )
-    cand = {n: search_with(conn, retriever, n, topn) for n in uniq}
-    if not any(cand.values()):
-        return {n: None for n in uniq}
-
-    payload = [
-        {
-            "item": n,
-            "candidates": [{"id": c["foodkeeper_id"], "name": c["name"]} for c in cand[n]],
-        }
-        for n in uniq
-    ]
-    try:
-        data = llm.chat_json(
-            conn, "match", MATCH_SYSTEM, json.dumps({"items": payload}, ensure_ascii=False)
-        )
-        picks = data.get("picks") or {}
-    except Exception:  # noqa: BLE001 - a failed rerank falls back to the top hybrid hit
-        picks = {}
-
-    out: dict[str, int | None] = {}
-    for n in uniq:
-        pick = picks.get(n)
-        if isinstance(pick, str) and pick.strip().isdigit():
-            pick = int(pick)
-        if isinstance(pick, int) and any(c["foodkeeper_id"] == pick for c in cand[n]):
-            out[n] = pick
-        else:
-            out[n] = cand[n][0]["foodkeeper_id"] if cand[n] else None
-    return out

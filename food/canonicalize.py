@@ -119,9 +119,9 @@ def _store(conn: sqlite3.Connection, retailer: str, item: dict, ci: CanonicalIte
     cur = conn.execute(
         """INSERT INTO products
            (canonical_name, brand, category, pkg_size, unit, is_food, is_perishable, storage,
-            shelf_life_days, shelf_life_days_opened, shelf_life_source, foodkeeper_id,
+            shelf_life_days, shelf_life_days_opened, shelf_life_source,
             llm_model, llm_confidence, classified_at)
-           VALUES (?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,?,?,datetime('now'))""",
+           VALUES (?,?,?,?,?,?,?,?,NULL,NULL,NULL,?,?,datetime('now'))""",
         (
             ci.canonical_name,
             ci.brand,
