@@ -1,16 +1,24 @@
 """Batched shelf-life resolution.
 
-Replaces the id-only FoodKeeper rerank *and* the separate missing-shelf-life agent pass with
-one agent run per batch. Each item arrives with its FoodKeeper candidate shortlist (hybrid
-retrieval), every candidate enriched with the shelf-life figures that matter for storage. The
-agent returns, per item, the shelf life to use and where it came from:
+Two phases per chunk of items:
+
+1. **Research** — a tool-calling agent receives each item with its FoodKeeper candidate
+   shortlist (hybrid retrieval, each candidate enriched with its shelf-life figures) and uses
+   `web_search` only where no row fits. It returns prose notes.
+2. **Synthesis** — a forced structured-output call (`with_structured_output`) turns those notes
+   into one verdict per item. The schema is the only tool bound, so the model cannot answer in
+   prose — that is what guarantees we get structured output back.
+
+Verdicts are keyed by product id (not name), missing items are re-asked once, and a
+`foodkeeper` verdict takes its number from the validated row rather than the model. Each
+verdict carries its source:
 
   foodkeeper  the picked FoodKeeper row fits (its id is kept for provenance)
-  web         nothing in FoodKeeper fit; found via `web_search`
+  web         nothing in FoodKeeper fit; found via web_search
   llm         answered from its own knowledge
 
-One run per batch keeps the fast path batched; `web_search` is used only for the items
-FoodKeeper cannot answer.
+One run per `RESOLVE_CHUNK`, so the fast path stays batched; web_search is used only for the
+items FoodKeeper cannot answer.
 """
 
 from __future__ import annotations
@@ -18,7 +26,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from typing import Any, Literal
+from typing import Any, Callable, Literal, TypeVar
 
 from langchain.agents import create_agent
 from langchain_core.tools import tool
@@ -27,44 +35,52 @@ from pydantic import BaseModel, Field
 from . import embeddings, llm, reference
 
 RESOLVE_CHUNK = 8  # items per agent run — keep each request small for the upstream model
-RESOLVE_ATTEMPTS = 3  # retries for a transient provider error (e.g. HTTP 524)
-NUDGE = (
-    "You did not return a structured response. Call the structured-response tool exactly "
-    "once, with one entry per item, and do not write any prose, notes, or commentary."
-)
+ATTEMPTS = 3  # retries per phase for a transient provider error (e.g. HTTP 524)
 
-SYSTEM = """You resolve how long grocery items keep. You receive several items at once, and
-for each a shortlist of FoodKeeper reference rows with their shelf-life figures in days
-(pantry, refrigerate, freezer, after opening).
+T = TypeVar("T")
 
-For EVERY item return exactly one entry:
-- Prefer a FoodKeeper row. If a candidate is the same food, set source="foodkeeper",
-  foodkeeper_id to its id, and shelf_life_days to that row's figure for the item's storage
-  (counter/fridge -> refrigerate_days, freezer -> freezer_days, otherwise pantry_days; use
-  after_opening_days when that is the figure that applies). Leave storage null to keep the
-  item's current storage.
-- FoodKeeper rows can be sparse or odd — e.g. a milk row with only a freezer figure and no
-  refrigerated days. If a candidate only loosely fits, or its figures don't make sense for
-  the item, treat it as NOT fitting and fall through to web/llm.
-- If NONE of the candidates is really the same food, do NOT force a pick — a wrong match is
-  worse than none. Use the web_search tool and set source="web" with shelf_life_days.
-- If you are already confident, answer from your own knowledge with source="llm" and
-  shelf_life_days.
+RESEARCH_SYSTEM = """You research how long grocery items keep. You receive several items at
+once, and for each a shortlist of FoodKeeper reference rows with their shelf-life figures in
+days (pantry, refrigerate, freezer, after opening).
 
-shelf_life_days is whole days and is required whenever the item is perishable, including
-FoodKeeper picks. Non-perishable items (dry goods, canned, spices) are is_perishable=false
-with shelf_life_days null. Echo each item's name exactly in `item`."""
+For each item decide the shelf life to use and where it comes from:
+- a FoodKeeper row, when a candidate is genuinely the same food and its figures make sense.
+  FoodKeeper rows can be sparse or odd (e.g. a milk row with only a freezer figure and no
+  refrigerated days) — if a candidate only loosely fits, do not use it;
+- the web_search tool, when no row fits — search authoritative guidance (USDA/FoodKeeper,
+  food-safety agencies, manufacturers);
+- your own knowledge, when you are already confident.
+
+Then write a short note per item, quoting its id: the shelf life in days, the source (a
+FoodKeeper id, the web, or your own knowledge), and the storage it applies to. Do NOT return
+JSON — just notes."""
+
+SYNTH_SYSTEM = """You convert grocery shelf-life research notes into one structured verdict per
+item. Return one entry per item, echoing that item's `id` in `item_id`. For each:
+- source: "foodkeeper" if a FoodKeeper row was used, else "web" or "llm";
+- foodkeeper_id: that row's id when source is foodkeeper, else null;
+- shelf_life_days: YOUR best shelf life in whole days. Treat FoodKeeper as a slightly preferred
+  source, not the authority — its figures can be unrealistic (a row listing only a 3-month
+  freezer figure does not mean 90 days of fridge life). Use judgement; null only when the item
+  is non-perishable;
+- is_perishable: false for dry goods, canned, spices."""
 
 
 class ItemVerdict(BaseModel):
     """One item's resolved shelf life."""
 
-    item: str
+    item_id: int = Field(description="the item's id, echoed exactly")
     source: Literal["foodkeeper", "web", "llm"] = "llm"
-    foodkeeper_id: int | None = None
-    shelf_life_days: int | None = None
+    foodkeeper_id: int | None = Field(
+        default=None, description="the FoodKeeper row id, when source is foodkeeper"
+    )
+    shelf_life_days: int | None = Field(
+        default=None, description="whole days; null when the item is non-perishable"
+    )
     shelf_life_days_opened: int | None = None
-    storage: str | None = None
+    storage: str | None = Field(
+        default=None, description="fridge | freezer | pantry | counter"
+    )
     is_perishable: bool = True
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
@@ -88,14 +104,19 @@ def web_search(query: str) -> str:
     )
 
 
-def _agent():
-    """Build the batched tool-calling agent. Kept small so tests can substitute it."""
-    return create_agent(
-        llm.chat_model(),
-        tools=[web_search],
-        system_prompt=SYSTEM,
-        response_format=BatchVerdict,
-    )
+def _research_agent():
+    """Phase 1: a tool-calling agent that gathers, but is not asked for structured output."""
+    return create_agent(llm.chat_model(), tools=[web_search], system_prompt=RESEARCH_SYSTEM)
+
+
+def _structured():
+    """Phase 2: structured output with the schema as the only (forced) tool.
+
+    The Command Code provider does not honour native `json_schema` response format, so we force
+    a function call instead — the schema tool is the only option, so the model cannot reply in
+    prose.
+    """
+    return llm.chat_model().with_structured_output(BatchVerdict, method="function_calling")
 
 
 def _candidate(row: dict) -> dict:
@@ -112,15 +133,29 @@ def _candidate(row: dict) -> dict:
 
 def _shortlists(
     conn: sqlite3.Connection, items: list[dict], model: str | None, topn: int
-) -> dict[str, list[dict]]:
+) -> dict[int, list[dict]]:
+    """FoodKeeper candidates per item, keyed by product id."""
     names = [it["name"] for it in items]
     retriever = reference.build_retriever(
         conn, model, limit=topn, query_vectors=reference._query_vectors(conn, model, names)
     )
     return {
-        it["name"]: [_candidate(c) for c in reference.search_with(conn, retriever, it["name"], topn)]
+        it["id"]: [_candidate(c) for c in reference.search_with(conn, retriever, it["name"], topn)]
         for it in items
     }
+
+
+def _payload(items: list[dict], shortlists: dict[int, list[dict]]) -> list[dict]:
+    return [
+        {
+            "id": it["id"],
+            "item": it["name"],
+            "category": it.get("category"),
+            "storage": it.get("storage"),
+            "candidates": shortlists.get(it["id"], []),
+        }
+        for it in items
+    ]
 
 
 def resolve_batch(
@@ -128,82 +163,106 @@ def resolve_batch(
     items: list[dict],
     model: str | None = None,
     topn: int = 5,
-) -> dict[str, ItemVerdict]:
-    """Resolve shelf lives for a batch of items, one agent run per `RESOLVE_CHUNK`.
+) -> dict[int, ItemVerdict]:
+    """Resolve shelf lives for a batch of items, one run per `RESOLVE_CHUNK`.
 
-    `items` are {"id", "name", "category", "storage"} dicts. Returns {name: ItemVerdict}; any
+    `items` are {"id", "name", "category", "storage"} dicts. Returns {id: ItemVerdict}; any
     `foodkeeper_id` is validated against that item's shortlist (a hallucinated id downgrades to
-    the model's own answer). Chunking keeps each agent request small enough for the upstream to
-    answer, and a failed chunk is retried a few times before being left unresolved.
+    the model's own answer). Chunking keeps each request small; each phase is retried on a
+    transient error, and any item missing from a chunk's verdicts is re-asked once.
     """
-    items = [it for it in items if it.get("name")]
+    items = [it for it in items if it.get("name") and it.get("id") is not None]
     if not items:
         return {}
     model = model or embeddings.model_name()
     shortlists = _shortlists(conn, items, model, topn)
 
-    out: dict[str, ItemVerdict] = {}
+    out: dict[int, ItemVerdict] = {}
     for start in range(0, len(items), RESOLVE_CHUNK):
         out.update(_resolve_chunk(items[start : start + RESOLVE_CHUNK], shortlists))
     return out
 
 
 def _resolve_chunk(
-    chunk: list[dict], shortlists: dict[str, list[dict]]
-) -> dict[str, ItemVerdict]:
-    payload = [
-        {
-            "item": it["name"],
-            "category": it.get("category"),
-            "storage": it.get("storage"),
-            "candidates": shortlists.get(it["name"], []),
-        }
-        for it in chunk
-    ]
-    agent = _agent()
-    messages: Any = [("user", json.dumps({"items": payload}, ensure_ascii=False))]
+    chunk: list[dict], shortlists: dict[int, list[dict]]
+) -> dict[int, ItemVerdict]:
+    payload = _payload(chunk, shortlists)
 
-    verdict: BatchVerdict | None = None
-    last: Exception | str | None = None
-    for attempt in range(RESOLVE_ATTEMPTS):
-        try:
-            result: dict[str, Any] = agent.invoke({"messages": messages})
-        except Exception as e:  # noqa: BLE001 - a transient upstream error (e.g. HTTP 524)
-            last = e
-            time.sleep(1.5 * (attempt + 1))
-            continue
-
-        verdict = result.get("structured_response")
-        if verdict is not None:
-            break
-        # The model answered in prose instead of calling the structured-output tool.
-        # Continue the same conversation and make the ask explicit (LangChain only
-        # auto-retries malformed structured output, not a missing one).
-        last = "no structured response"
-        messages = [*result.get("messages", []), ("user", NUDGE)]
-        time.sleep(1.0)
-
+    findings = _retry(lambda: _research(payload), "research", len(chunk))
+    verdict = None if findings is None else _retry(
+        lambda: _synthesize(payload, findings), "synthesis", len(chunk)
+    )
     if verdict is None:
-        print(f"    shelf-life resolver failed ({len(chunk)} items): {last}")
         return {}
 
-    out: dict[str, ItemVerdict] = {}
-    for v in verdict.items:
-        ids = {c["foodkeeper_id"] for c in shortlists.get(v.item, [])}
-        if v.source == "foodkeeper" and v.foodkeeper_id not in ids:
-            v = v.model_copy(update={"foodkeeper_id": None, "source": "llm"})
-        out[v.item] = v
+    out = _collect(verdict, chunk, shortlists)
+
+    # completeness: re-ask once for anything the model omitted
+    missing = [it for it in chunk if it["id"] not in out]
+    if missing:
+        retry = _retry(
+            lambda: _synthesize(_payload(missing, shortlists), findings),
+            "synthesis (missing)",
+            len(missing),
+        )
+        if retry is not None:
+            out.update(_collect(retry, missing, shortlists))
     return out
 
 
-def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[str, ItemVerdict]) -> int:
+def _collect(
+    verdict: BatchVerdict, items: list[dict], shortlists: dict[int, list[dict]]
+) -> dict[int, ItemVerdict]:
+    """Index a verdict by id, dropping unknown ids and mistrusted FoodKeeper ids."""
+    wanted = {it["id"] for it in items}
+    out: dict[int, ItemVerdict] = {}
+    for v in verdict.items:
+        if v.item_id not in wanted:
+            continue
+        ids = {c["foodkeeper_id"] for c in shortlists.get(v.item_id, [])}
+        if v.source == "foodkeeper" and v.foodkeeper_id not in ids:
+            v = v.model_copy(update={"foodkeeper_id": None, "source": "llm"})
+        out[v.item_id] = v
+    return out
+
+
+def _retry(fn: Callable[[], T], phase: str, count: int) -> T | None:
+    """Run `fn`, retrying a few times on a transient provider error."""
+    for attempt in range(ATTEMPTS):
+        try:
+            return fn()
+        except Exception as e:  # noqa: BLE001 - transient upstream error, retry
+            last = e
+            time.sleep(1.5 * (attempt + 1))
+    print(f"    shelf-life {phase} failed ({count} items): {last}")
+    return None
+
+
+def _research(payload: list[dict]) -> str:
+    """Phase 1: gather. Returns the agent's final notes as text."""
+    result: dict[str, Any] = _research_agent().invoke(
+        {"messages": [("user", json.dumps({"items": payload}, ensure_ascii=False))]}
+    )
+    messages = result.get("messages") or []
+    return str(getattr(messages[-1], "content", "") or "") if messages else ""
+
+
+def _synthesize(payload: list[dict], findings: str) -> BatchVerdict | None:
+    """Phase 2: force the structured verdict from the items, candidates and notes."""
+    user = json.dumps({"items": payload, "research_notes": findings}, ensure_ascii=False)
+    result = _structured().invoke([("system", SYNTH_SYSTEM), ("user", user)])
+    return result if isinstance(result, BatchVerdict) else None
+
+
+def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemVerdict]) -> int:
     """Write resolved shelf lives back to products, re-expirying any built inventory rows."""
-    by_name = {it["name"]: it for it in items}
+    by_id = {it["id"]: it for it in items}
     applied = 0
-    for name, v in verdicts.items():
-        it = by_name.get(name)
+    for pid, v in verdicts.items():
+        it = by_id.get(pid)
         if it is None:
             continue
+        fid = v.foodkeeper_id if v.source == "foodkeeper" else None
         days = v.shelf_life_days
         conn.execute(
             """UPDATE products
@@ -217,21 +276,20 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[str, ItemV
                 v.storage,
                 int(v.is_perishable),
                 v.source,
-                v.foodkeeper_id if v.source == "foodkeeper" else None,
+                fid,
                 v.confidence,
-                it["id"],
+                pid,
             ),
         )
-        if v.is_perishable and days:
+        if days:
             conn.execute(
                 """UPDATE inventory SET expires_on = date(acquired_on, '+' || ? || ' days')
                    WHERE product_id = ? AND status IN ('active', 'partial')""",
-                (days, it["id"]),
+                (days, pid),
             )
-        else:
-            conn.execute(
-                "UPDATE inventory SET expires_on = NULL WHERE product_id = ?", (it["id"],)
-            )
+        elif not v.is_perishable:
+            # only a known non-perishable clears expiry; an unknown keeps what it had
+            conn.execute("UPDATE inventory SET expires_on = NULL WHERE product_id = ?", (pid,))
         applied += 1
     conn.commit()
     return applied

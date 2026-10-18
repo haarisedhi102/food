@@ -23,24 +23,23 @@ def _no_embeddings(monkeypatch):
     monkeypatch.setattr(resolve.embeddings, "is_configured", lambda: False)
 
 
-class _FakeAgent:
-    def __init__(self, verdict):
-        self._verdict = verdict
+class _FakeMsg:
+    content = "notes: eggs 21d (foodkeeper 21)"
 
+
+class _FakeResearch:
     def invoke(self, payload):
-        return {"structured_response": self._verdict}
+        return {"messages": [_FakeMsg()]}
 
 
-class _SequenceAgent:
-    """Returns queued responses in order, recording each payload it is given."""
+class _FakeStructured:
+    """Returns queued verdicts, one per invoke, so the missing-item re-ask can be tested."""
 
-    def __init__(self, responses):
-        self._responses = list(responses)
-        self.payloads = []
+    def __init__(self, *verdicts):
+        self._queue = list(verdicts)
 
-    def invoke(self, payload):
-        self.payloads.append(payload)
-        return self._responses.pop(0)
+    def invoke(self, messages):
+        return self._queue.pop(0) if self._queue else None
 
 
 def _batch(*items):
@@ -49,67 +48,49 @@ def _batch(*items):
 
 def test_shortlists_enrich_candidates_with_shelf_life():
     conn = _mem()
-    shortlists = resolve._shortlists(conn, [{"name": "Jumbo Yellow Onions"}], None, 5)
-    top = shortlists["Jumbo Yellow Onions"][0]
+    shortlists = resolve._shortlists(conn, [{"id": 1, "name": "Jumbo Yellow Onions"}], None, 5)
+    top = shortlists[1][0]
     assert top["foodkeeper_id"] == 294
     assert "pantry_days" in top and "after_opening_days" in top
 
 
-def test_resolve_batch_keeps_a_valid_id_and_drops_a_bogus_one(monkeypatch):
+def test_resolve_batch_keys_by_id_and_drops_a_bogus_foodkeeper_id(monkeypatch):
     conn = _mem()
     verdict = _batch(
-        {
-            "item": "Jumbo Yellow Onions",
-            "source": "foodkeeper",
-            "foodkeeper_id": 294,
-            "shelf_life_days": 30,
-        },
-        {  # an id that is not in the shortlist must not be trusted
-            "item": "Mystery Sauce",
-            "source": "foodkeeper",
-            "foodkeeper_id": 999999,
-            "shelf_life_days": 10,
-        },
+        {"item_id": 10, "source": "foodkeeper", "foodkeeper_id": 294, "shelf_life_days": 30},
+        # an id that is not in the shortlist must not be trusted
+        {"item_id": 11, "source": "foodkeeper", "foodkeeper_id": 999999, "shelf_life_days": 10},
     )
-    monkeypatch.setattr(resolve, "_agent", lambda: _FakeAgent(verdict))
+    monkeypatch.setattr(resolve, "_research_agent", lambda: _FakeResearch())
+    monkeypatch.setattr(resolve, "_structured", lambda: _FakeStructured(verdict))
 
-    out = resolve.resolve_batch(conn, [{"name": "Jumbo Yellow Onions"}, {"name": "Mystery Sauce"}])
+    out = resolve.resolve_batch(
+        conn, [{"id": 10, "name": "Jumbo Yellow Onions"}, {"id": 11, "name": "Mystery Sauce"}]
+    )
 
-    assert out["Jumbo Yellow Onions"].foodkeeper_id == 294
-    assert out["Jumbo Yellow Onions"].source == "foodkeeper"
-    assert out["Mystery Sauce"].foodkeeper_id is None
-    assert out["Mystery Sauce"].source == "llm"
+    assert out[10].foodkeeper_id == 294 and out[10].source == "foodkeeper"
+    assert out[11].foodkeeper_id is None and out[11].source == "llm"
 
 
-def test_resolve_nudges_the_model_when_it_answers_in_prose(monkeypatch):
+def test_resolve_batch_reasks_for_an_item_the_model_omitted(monkeypatch):
     conn = _mem()
-    monkeypatch.setattr(resolve.time, "sleep", lambda *_: None)  # no backoff delay in tests
-    prose = {"messages": [("ai", "Here are the shelf lives and some notes…")]}  # no structured_response
-    good = {
-        "messages": [("ai", "ok")],
-        "structured_response": _batch(
-            {
-                "item": "Jumbo Yellow Onions",
-                "source": "foodkeeper",
-                "foodkeeper_id": 294,
-                "shelf_life_days": 60,
-            }
-        ),
-    }
-    agent = _SequenceAgent([prose, good])
-    monkeypatch.setattr(resolve, "_agent", lambda: agent)
+    first = _batch({"item_id": 10, "source": "llm", "shelf_life_days": 30})
+    retry = _batch({"item_id": 11, "source": "llm", "shelf_life_days": 10})
+    monkeypatch.setattr(resolve, "_research_agent", lambda: _FakeResearch())
+    structured = _FakeStructured(first, retry)
+    monkeypatch.setattr(resolve, "_structured", lambda: structured)
 
-    out = resolve.resolve_batch(conn, [{"name": "Jumbo Yellow Onions"}])
+    out = resolve.resolve_batch(
+        conn, [{"id": 10, "name": "Jumbo Yellow Onions"}, {"id": 11, "name": "Mystery Sauce"}]
+    )
 
-    assert out["Jumbo Yellow Onions"].foodkeeper_id == 294
-    assert len(agent.payloads) == 2  # the prose answer, then a nudge
-    assert "structured-response tool" in str(agent.payloads[1])
+    assert set(out) == {10, 11}
 
 
-def test_apply_writes_shelf_life_and_syncs_inventory():
+def test_apply_keeps_the_model_number_for_a_foodkeeper_verdict():
     conn = _mem()
     conn.execute(
-        "INSERT INTO products (canonical_name, category, is_food, is_perishable) VALUES ('Milk','Dairy',1,0)"
+        "INSERT INTO products (canonical_name, category, is_food, is_perishable) VALUES ('Eggs','Dairy',1,1)"
     )
     pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
     conn.execute(
@@ -118,17 +99,56 @@ def test_apply_writes_shelf_life_and_syncs_inventory():
     )
     conn.commit()
 
+    # FoodKeeper row 21 says 3 weeks, but the model judges 10 days — the model wins
     verdicts = {
-        "Milk": resolve.ItemVerdict(
-            item="Milk", source="foodkeeper", foodkeeper_id=27, shelf_life_days=7, is_perishable=True
+        pid: resolve.ItemVerdict(
+            item_id=pid, source="foodkeeper", foodkeeper_id=21, shelf_life_days=10
         )
     }
-    applied = resolve.apply(conn, [{"id": pid, "name": "Milk"}], verdicts)
+    resolve.apply(conn, [{"id": pid, "name": "Eggs", "storage": "fridge"}], verdicts)
 
-    assert applied == 1
     p = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
-    assert p["shelf_life_days"] == 7
-    assert p["shelf_life_source"] == "foodkeeper"
-    assert p["foodkeeper_id"] == 27
+    assert p["shelf_life_days"] == 10
+    assert p["shelf_life_source"] == "foodkeeper" and p["foodkeeper_id"] == 21
     inv = conn.execute("SELECT expires_on FROM inventory WHERE product_id = ?", (pid,)).fetchone()
-    assert inv["expires_on"] == "2026-10-17"  # 2026-10-10 + 7
+    assert inv["expires_on"] == "2026-10-20"  # 2026-10-10 + 10
+
+
+def test_apply_uses_the_model_number_for_a_non_foodkeeper_verdict():
+    conn = _mem()
+    conn.execute("INSERT INTO products (canonical_name, is_food, is_perishable) VALUES ('Milk',1,1)")
+    pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    conn.commit()
+
+    verdicts = {pid: resolve.ItemVerdict(item_id=pid, source="llm", shelf_life_days=7)}
+    resolve.apply(conn, [{"id": pid, "name": "Milk"}], verdicts)
+
+    p = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
+    assert p["shelf_life_days"] == 7 and p["shelf_life_source"] == "llm"
+
+
+def test_apply_only_clears_expiry_for_a_known_non_perishable():
+    conn = _mem()
+    conn.execute("INSERT INTO products (canonical_name, is_food, is_perishable) VALUES ('Mystery',1,1)")
+    pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    conn.execute(
+        "INSERT INTO inventory (product_id, quantity, remaining_qty, acquired_on, expires_on, status) VALUES (?,1,1,'2026-10-10','2026-11-01','active')",
+        (pid,),
+    )
+    conn.commit()
+
+    # perishable but no days -> leave the existing expiry alone
+    resolve.apply(
+        conn, [{"id": pid, "name": "Mystery"}],
+        {pid: resolve.ItemVerdict(item_id=pid, source="llm", is_perishable=True, shelf_life_days=None)},
+    )
+    kept = conn.execute("SELECT expires_on FROM inventory WHERE product_id = ?", (pid,)).fetchone()
+    assert kept["expires_on"] == "2026-11-01"
+
+    # known non-perishable -> clear it
+    resolve.apply(
+        conn, [{"id": pid, "name": "Mystery"}],
+        {pid: resolve.ItemVerdict(item_id=pid, source="llm", is_perishable=False)},
+    )
+    cleared = conn.execute("SELECT expires_on FROM inventory WHERE product_id = ?", (pid,)).fetchone()
+    assert cleared["expires_on"] is None

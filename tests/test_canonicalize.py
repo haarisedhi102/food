@@ -120,7 +120,12 @@ def test_canonicalize_resolves_shelf_life_for_food_only(monkeypatch):
 
     def fake_resolve(conn_, items, **kwargs):
         seen["names"] = [it["name"] for it in items]
-        return {"Eggs": canonicalize.resolve.ItemVerdict(item="Eggs", source="llm", shelf_life_days=21)}
+        return {
+            it["id"]: canonicalize.resolve.ItemVerdict(
+                item_id=it["id"], source="llm", shelf_life_days=21
+            )
+            for it in items
+        }
 
     monkeypatch.setattr(canonicalize.llm, "chat_json", fake_chat_json)
     monkeypatch.setattr(canonicalize.resolve, "resolve_batch", fake_resolve)
