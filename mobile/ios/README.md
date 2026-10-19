@@ -48,6 +48,55 @@ search=157 keys=123 loads=13 detailsOk=13 errors=0 retries=0
 
 `receiptsPerLoad` / `attempts` in `WebModel.swift` tune the chunk size and retry budget.
 
+## The app
+
+Two tabs, all backed by `FoodCore` on-device (no server):
+
+- **Kitchen** — the dashboard, and the app's reason to exist. It leads with **Use soon**: everything
+  expiring within 7 days, across every shelf, soonest-first — the daily action list. Below it, one
+  section per shelf (fridge / freezer / pantry / counter) holds *only what's left* (beyond the
+  horizon), so nothing is listed twice and the tab reads "act on these, browse the rest". Long
+  shelves collapse — the pantry (365 mostly shelf-stable rows) folds behind **Show N more**, so the
+  default tab is a screenful rather than a 400-row wall. Rows show the full product name, brand
+  (when it adds something — omitted if missing or already in the name), quantity, and a friendly
+  relative date ("today", "in 3 days"); swipe for **Used** / **Tossed**; tap for the item detail
+  (shelf-life source, category, price history, used/tossed actions). The search field filters
+  across every shelf by name, brand or category.
+- **Settings** — provider API key, base URL, model, and optional embeddings (persisted in
+  UserDefaults; a blank field falls back to the built-in default or an injected env var), plus
+  **Sync receipts**: the in-app browser (Kroger / Costco) and **Sync**, which runs
+  normalize → store → canonicalize → resolve → inventory on the device and refreshes the dashboard.
+
+Receipt fetching is an occasional action, so it lives behind **Settings → Sync receipts** rather
+than in the tab bar — the tab bar stays for navigation, per Apple's HIG.
+
+The web dashboard (`food/web/`) mirrors this: the same relative-date phrasing (`relative()` in
+`app.py` ↔ `Chat.relative` in Swift), the same 7-day "Use soon" horizon (`USE_SOON_DAYS` ↔
+`AppModel.useSoonDays`), the same pantry-collapse rule (`COLLAPSE_THRESHOLD` ↔
+`AppModel.collapseThreshold`, expanded with `/?show=pantry`), the same brand-on-the-row rule
+(`brand_of()` ↔ `ItemRow.brandText`, both suppressing a brand already in the name), and the same
+name/brand/category search (`/?q=` ↔ the `.searchable` field). Keep the two in step when you
+change either.
+
+`project.yml` signs with `DEVELOPMENT_TEAM: 4XANTCF7HL` (automatic), so physical-device runs
+work: an unsigned device build fails to launch. The simulator ignores signing either way.
+
+### Visual checks
+
+Launch-time hooks make screenshots scriptable without tapping:
+
+| Env var | Effect |
+|---|---|
+| `FOOD_DB_PATH` | Use a prepared database instead of Application Support/`food.db` |
+| `FOOD_TAB` | `0` Kitchen, `2` Settings |
+| `FOOD_ITEM` | Open that inventory id's detail view |
+
+```bash
+# seed a DB with the CLI (schema + sample rows), copy it into the app container, then:
+SIMCTL_CHILD_FOOD_TAB=0 xcrun simctl launch booted ai.commandcode.food.capture
+xcrun simctl io booted screenshot shot.png
+```
+
 ## Build & run
 
 Needs Xcode + [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).

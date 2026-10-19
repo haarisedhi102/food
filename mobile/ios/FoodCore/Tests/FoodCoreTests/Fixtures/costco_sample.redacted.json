@@ -1,0 +1,134 @@
+{
+  "data": {
+    "receiptsWithCounts": {
+      "receipts": [
+        {
+          "transactionBarcode": "REDACTED",
+          "transactionDate": "2026-10-09",
+          "transactionDateTime": "2026-10-09T17:53:00",
+          "transactionType": "Sales",
+          "documentType": "WarehouseReceiptDetail",
+          "receiptType": "In-Warehouse",
+          "warehouseName": "WAREHOUSE",
+          "warehouseNumber": "000",
+          "warehouseCity": "CITY",
+          "warehouseState": "ST",
+          "membershipNumber": "REDACTED",
+          "total": 148.42,
+          "subTotal": 145.2,
+          "totalItemCount": 10,
+          "itemArray": [
+            {
+              "itemNumber": "120296",
+              "itemDescription01": "KS COLMBIAN",
+              "itemDescription02": "3LBS 1.36KG",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 13,
+              "transDepartmentNumber": 13,
+              "unit": 1,
+              "amount": 19.99,
+              "itemUnitPriceAmount": 19.99,
+              "taxFlag": "N"
+            },
+            {
+              "itemNumber": "394836",
+              "itemDescription01": "/ 120296",
+              "itemDescription02": null,
+              "itemIdentifier": null,
+              "itemDepartmentNumber": 13,
+              "transDepartmentNumber": 13,
+              "unit": -1,
+              "amount": -4,
+              "itemUnitPriceAmount": 0,
+              "taxFlag": null
+            },
+            {
+              "itemNumber": "2022464",
+              "itemDescription01": "SIMPLY OJ",
+              "itemDescription02": "C2 T20H5  P200 SL35",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 17,
+              "transDepartmentNumber": 17,
+              "unit": 1,
+              "amount": 10.99,
+              "itemUnitPriceAmount": 10.99,
+              "taxFlag": "N"
+            },
+            {
+              "itemNumber": "1462714",
+              "itemDescription01": "KS ORG A2 PR",
+              "itemDescription02": "3/64OZ SL30 33X4 P132",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 17,
+              "transDepartmentNumber": 17,
+              "unit": 1,
+              "amount": 13.99,
+              "itemUnitPriceAmount": 13.99,
+              "taxFlag": "N"
+            },
+            {
+              "itemNumber": "1337852",
+              "itemDescription01": "SHRIMP 31/40",
+              "itemDescription02": "6T 6H P576 SL90",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 18,
+              "transDepartmentNumber": 18,
+              "unit": 1,
+              "amount": 13.89,
+              "itemUnitPriceAmount": 13.89,
+              "taxFlag": "N"
+            },
+            {
+              "itemNumber": "2081059",
+              "itemDescription01": "ZYN VTY",
+              "itemDescription02": "12/12OZ",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 14,
+              "transDepartmentNumber": 14,
+              "unit": 2,
+              "amount": 33.98,
+              "itemUnitPriceAmount": 16.99,
+              "taxFlag": "N"
+            },
+            {
+              "itemNumber": "2035014",
+              "itemDescription01": "16PC LIBBEY",
+              "itemDescription02": "FLUTED FY26-27 P=40",
+              "itemIdentifier": null,
+              "itemDepartmentNumber": 32,
+              "transDepartmentNumber": 32,
+              "unit": 1,
+              "amount": 18.99,
+              "itemUnitPriceAmount": 18.99,
+              "taxFlag": "Y"
+            },
+            {
+              "itemNumber": "1975219",
+              "itemDescription01": "MWCHINOPANT",
+              "itemDescription02": "FY26              P360",
+              "itemIdentifier": null,
+              "itemDepartmentNumber": 39,
+              "transDepartmentNumber": 39,
+              "unit": 1,
+              "amount": 19.99,
+              "itemUnitPriceAmount": 19.99,
+              "taxFlag": "Y"
+            },
+            {
+              "itemNumber": "1068080",
+              "itemDescription01": "PASTURE EGGS",
+              "itemDescription02": "2DZ GRADE A P360/300 SL22",
+              "itemIdentifier": "E",
+              "itemDepartmentNumber": 17,
+              "transDepartmentNumber": 17,
+              "unit": 2,
+              "amount": 17.38,
+              "itemUnitPriceAmount": 8.69,
+              "taxFlag": "N"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

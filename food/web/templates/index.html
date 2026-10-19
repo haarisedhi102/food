@@ -21,9 +21,10 @@
       <a href="/item/{{ r.product_id }}" class="text-sm hover:underline truncate block">
         {{ r.canonical_name }}
       </a>
-      <div class="text-[11px] text-slate-400">
-        {%- set meta = [r.brand, r.pkg_size] | reject('none') | join(' · ') -%}
-        {% if meta %}<span class="text-slate-500">{{ meta }} · </span>{% endif %}x{{ '%g'|format(r.remaining_qty) }}{% if r.expires_on %} · {{ r.expires_on }}{% endif %}
+      <div class="text-[11px] text-slate-400 truncate">
+        {% set b = brand_of(r.canonical_name, r.brand) %}
+        {%- set meta = [b, r.pkg_size] | select | join(' · ') -%}
+        {% if meta %}{{ meta }} · {% endif %}x{{ '%g'|format(r.remaining_qty) }} · {{ relative(r.days_left) }}
       </div>
     </div>
     <div class="flex items-center gap-1 shrink-0">
@@ -41,54 +42,90 @@
 {% endmacro %}
 
 {% block content %}
-  <section class="mb-6">
-    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Expiring soon</h2>
-    {% if soon %}
-      <div class="flex flex-wrap gap-2">
-        {% for r in soon %}
-          <a href="/item/{{ r.product_id }}"
-             class="px-3 py-2 rounded-lg bg-white border border-amber-200 shadow-sm text-sm flex items-center gap-2">
-            {{ r.canonical_name }} {{ badge(r.days_left) }}
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-sm text-slate-400">Nothing expiring in the next 3 days. 👌</p>
-    {% endif %}
-  </section>
+  <form method="get" action="/" class="mb-6">
+    <div class="relative">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search your kitchen"
+             autocomplete="off"
+             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-indigo-200">
+    </div>
+  </form>
 
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    {% for loc in locations %}
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-        <h3 class="font-semibold text-sm mb-2 flex items-center justify-between">
-          <span class="capitalize">{{ loc }}</span>
-          <span class="text-xs text-slate-400">{{ counts[loc] }}</span>
-        </h3>
-        {% if shelves[loc] %}
-          {% for r in shelves[loc] %}{{ card(r) }}{% endfor %}
+  {% if q %}
+    <section class="mb-6">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        {{ results|length }} {{ 'match' if results|length == 1 else 'matches' }}
+      </h2>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+        {% if results %}
+          {% for r in results %}{{ card(r) }}{% endfor %}
         {% else %}
-          <p class="text-xs text-slate-400 py-2">empty</p>
+          <p class="text-sm text-slate-400 py-2">No items match “{{ q }}”.</p>
         {% endif %}
-      </section>
-    {% endfor %}
-  </div>
-
-  <p class="mt-6 text-sm">
-    <a class="text-slate-500 hover:text-slate-800" href="/?archived={{ 0 if archived else 1 }}">
-      {{ 'Hide archived' if archived else 'Show archived' }}
-    </a>
-  </p>
-  {% if archived and archived_rows %}
-    <section class="mt-3 bg-white rounded-xl border border-slate-200 p-3">
-      <h3 class="font-semibold text-sm mb-2 text-slate-500">Archived ({{ archived_rows|length }})</h3>
-      <div class="grid gap-1 md:grid-cols-3">
-        {% for r in archived_rows %}
-          <div class="text-xs text-slate-400 flex justify-between gap-2">
-            <span class="truncate">{{ r.canonical_name }}</span>
-            <span>{{ r.status }}</span>
-          </div>
-        {% endfor %}
       </div>
     </section>
+  {% else %}
+    <section class="mb-6">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Use soon</h2>
+      <p class="text-xs text-slate-400 mb-2">Across every shelf, expiring within {{ use_soon_days }} days.</p>
+      {% if soon %}
+        <div class="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+          {% for r in soon %}
+            <a href="/item/{{ r.product_id }}"
+               class="px-3 py-2 rounded-lg bg-white border border-amber-200 shadow-sm text-sm flex items-center justify-between gap-2">
+              <span class="truncate">{{ r.canonical_name }}</span> {{ badge(r.days_left) }}
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-slate-400">Nothing expiring in the next {{ use_soon_days }} days. 👌</p>
+      {% endif %}
+    </section>
+
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {% for loc in locations %}
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-3" id="shelf-{{ loc }}">
+          <h3 class="font-semibold text-sm mb-2 flex items-center justify-between">
+            <span class="capitalize">{{ loc }}</span>
+            <span class="text-xs text-slate-400">{{ counts[loc] }}</span>
+          </h3>
+          {% if collapsed[loc] %}
+            <a href="/?show={{ show_links[loc] }}#shelf-{{ loc }}"
+               class="block text-sm text-indigo-600 hover:underline py-1">
+              Show {{ rest[loc]|length }} more
+            </a>
+          {% elif shelves[loc] %}
+            {% for r in shelves[loc] %}{{ card(r) }}{% endfor %}
+            {% if loc in expanded and rest[loc]|length >= 50 %}
+              <a href="/?show={{ hide_links[loc] }}#shelf-{{ loc }}"
+                 class="block text-sm text-slate-500 hover:text-slate-800 py-1">Show fewer</a>
+            {% endif %}
+          {% elif counts[loc] %}
+            <p class="text-xs text-slate-400 py-2">Everything here is already listed under Use soon.</p>
+          {% else %}
+            <p class="text-xs text-slate-400 py-2">empty</p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+
+    <p class="mt-6 text-sm">
+      <a class="text-slate-500 hover:text-slate-800" href="/?archived={{ 0 if archived else 1 }}">
+        {{ 'Hide archived' if archived else 'Show archived' }}
+      </a>
+    </p>
+    {% if archived and archived_rows %}
+      <section class="mt-3 bg-white rounded-xl border border-slate-200 p-3">
+        <h3 class="font-semibold text-sm mb-2 text-slate-500">Archived ({{ archived_rows|length }})</h3>
+        <div class="grid gap-1 md:grid-cols-3">
+          {% for r in archived_rows %}
+            <div class="text-xs text-slate-400 flex justify-between gap-2">
+              <span class="truncate">{{ r.canonical_name }}</span>
+              <span>{{ r.status }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
   {% endif %}
 {% endblock %}

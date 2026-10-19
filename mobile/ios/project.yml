@@ -5,12 +5,28 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
+packages:
+  FoodCore:
+    path: FoodCore
+
+schemes:
+  FoodCapture:
+    build:
+      targets:
+        FoodCapture: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   FoodCapture:
     type: application
     platform: iOS
     sources:
       - path: FoodCapture
+    dependencies:
+      - package: FoodCore
     info:
       path: FoodCapture/Info.plist
       properties:
@@ -33,4 +49,11 @@ targets:
         SWIFT_VERSION: "5.0"
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
-        CODE_SIGNING_ALLOWED: NO
+        # Sign with the user's team so physical-device runs work; the simulator ignores signing.
+        DEVELOPMENT_TEAM: 4XANTCF7HL
+        CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          CODE_SIGNING_ALLOWED: YES
+        Release:
+          CODE_SIGNING_ALLOWED: YES
