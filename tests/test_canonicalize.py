@@ -60,7 +60,6 @@ def test_canonicalize_stores_and_falls_back(monkeypatch):
                     "is_food": True,
                     "is_perishable": True,
                     "storage": "fridge",
-                    "shelf_life_days": 7,
                     "confidence": 0.9,
                 },
                 {
@@ -71,23 +70,19 @@ def test_canonicalize_stores_and_falls_back(monkeypatch):
                     "is_food": True,
                     "is_perishable": True,
                     "storage": "pantry",
-                    "shelf_life_days": 30,
                     "confidence": 0.8,
                 },
             ]
         }
 
     monkeypatch.setattr(canonicalize.llm, "chat_json", fake_chat_json)
+    monkeypatch.setattr(canonicalize.resolve, "resolve_batch", lambda *a, **k: {})
 
     stats = canonicalize.canonicalize(conn)
     assert stats["ok"] == 2
     assert stats["fallback"] == 1
+    assert stats["resolved"] == 0
     assert canonicalize.pending_count(conn) == 0
-
-    # the two good products
-    milk = conn.execute("SELECT * FROM products WHERE canonical_name = 'Whole Milk'").fetchone()
-    assert milk["shelf_life_days"] == 7
-    assert milk["shelf_life_source"] == "llm"
 
     # the unresolved one still got a placeholder product row (no review queue)
     placeholder = conn.execute(
@@ -96,14 +91,9 @@ def test_canonicalize_stores_and_falls_back(monkeypatch):
     assert placeholder["n"] == 1
 
 
-def test_foodkeeper_match_overrides_llm_estimate(monkeypatch):
+def test_canonicalize_resolves_shelf_life_for_food_only(monkeypatch):
     conn = _mem()
-    # seed one FoodKeeper row: eggs, DOP refrigerate 3 days
-    conn.execute(
-        """INSERT INTO shelf_life_ref
-           (foodkeeper_id, name, keywords, dop_refrigerate_days) VALUES (21, 'Eggs', 'eggs', 3)"""
-    )
-    conn.commit()
+    seen = {}
 
     def fake_chat_json(conn, purpose, system, user, **kwargs):
         return {
@@ -114,16 +104,37 @@ def test_foodkeeper_match_overrides_llm_estimate(monkeypatch):
                     "is_food": True,
                     "is_perishable": True,
                     "storage": "fridge",
-                    "foodkeeper_id": 21,
-                    "shelf_life_days": 99,  # must be ignored in favour of FoodKeeper
                     "confidence": 0.9,
-                }
+                },
+                {
+                    "item_key": "0002",
+                    "canonical_name": "Paper Towels",
+                    "category": "Household Supplies",
+                    "is_food": False,
+                    "is_perishable": False,
+                    "storage": "pantry",
+                    "confidence": 0.9,
+                },
             ]
         }
 
-    monkeypatch.setattr(canonicalize.llm, "chat_json", fake_chat_json)
-    canonicalize.canonicalize(conn)
+    def fake_resolve(conn_, items, **kwargs):
+        seen["names"] = [it["name"] for it in items]
+        return {
+            it["id"]: canonicalize.resolve.ItemVerdict(
+                item_id=it["id"], source="llm", shelf_life_days=21
+            )
+            for it in items
+        }
 
+    monkeypatch.setattr(canonicalize.llm, "chat_json", fake_chat_json)
+    monkeypatch.setattr(canonicalize.resolve, "resolve_batch", fake_resolve)
+
+    stats = canonicalize.canonicalize(conn)
+
+    # non-food never reaches the resolver; the food item's verdict is written back
+    assert seen["names"] == ["Eggs"]
+    assert stats["resolved"] == 1
     eggs = conn.execute("SELECT * FROM products WHERE canonical_name = 'Eggs'").fetchone()
-    assert eggs["shelf_life_days"] == 3
-    assert eggs["shelf_life_source"] == "foodkeeper"
+    assert eggs["shelf_life_days"] == 21
+    assert eggs["shelf_life_source"] == "llm"

@@ -17,9 +17,10 @@ ingest/costco.py · ingest/kroger.py ──► data/imports/*.json  (raw, archiv
       ▼
 normalize.py      deterministic per-retailer adapters → provisional records
       ▼
-canonicalize.py   LLM: name, brand, category, unit, storage, FoodKeeper match
+canonicalize.py   LLM: name, brand, category, unit, storage, is_food, is_perishable
       ▼
-shelflife.py      FoodKeeper value when matched, else the LLM's estimate
+resolve.py        shortlist each item in FoodKeeper, then a research agent + one forced
+                  structured synthesis call → shelf life + source
       ▼
 inventory.py      expires_on, remaining qty, FIFO consumption, auto-archive
       ▼
@@ -41,35 +42,65 @@ cp .env.example .env                  # then set CMD_API_KEY
 `CMD_API_KEY` comes from Command Code Studio → API keys, and is used against the provider
 endpoint `https://api.commandcode.ai/provider/v1`.
 
-`OPENROUTER_API_KEY` is optional. Without it, FoodKeeper matching is keyword-only; with it,
-`embed-ref` builds a semantic index and matching becomes hybrid (keyword + embeddings). The
-default embedding model is a cheap paid one (`baai/bge-base-en-v1.5`).
+`OPENROUTER_API_KEY` is optional. Without it, FoodKeeper candidate search is keyword-only;
+with it, `embed-ref` builds a semantic index and search becomes hybrid (keyword +
+embeddings). The default embedding model is a cheap paid one (`baai/bge-base-en-v1.5`).
+
+### Tracing (optional)
+
+Watch every LLM call (canonicalization, shelf-life resolution, chat) in a local
+[Arize Phoenix](https://arize.com/docs/phoenix) UI. Off unless `PHOENIX_ENABLED=1`:
+
+```bash
+uv sync --group tracing               # one-time: Phoenix server + OpenInference instrumentors
+uv run phoenix serve                  # UI at http://localhost:6006
+PHOENIX_ENABLED=1 uv run food classify
+```
+
+`PHOENIX_PROJECT` names the project (default `food`); set `PHOENIX_COLLECTOR_ENDPOINT` to
+ship to Phoenix Cloud instead of the local server. Instrumentation is automatic, so both
+the OpenAI client and the LangChain stack are traced.
 
 ## Use
 
 ```bash
-uv run food sync-ref                  # load the FoodKeeper shelf-life table (once)
-uv run food embed-ref                 # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
-uv run food sync --retailer costco    # log in when Chrome opens (MFA)
-uv run food sync --retailer kroger
-uv run food classify                  # canonicalize + ground remaining shelf life
-uv run food stock                     # build/refresh the fridge & pantry
-uv run food status                    # counts, LLM calls today
-uv run food digest                    # "use it or lose it" suggestions
-uv run food serve                     # dashboard at http://127.0.0.1:8000
+# Fresh setup in one shot: FoodKeeper reference + `--days` of receipts + classify + inventory.
+uv run food bootstrap --days 90        # add --serve to open the dashboard when it finishes
+
+# Incremental update — safe to re-run on an interval (cron / launchd / systemd timer).
+uv run food refresh
+
+uv run food serve                      # dashboard at http://127.0.0.1:8000
+uv run food status                     # counts, LLM calls today
+uv run food digest                     # "use it or lose it" suggestions
 ```
 
-Refresh loop: `food sync && food classify && food stock`.
+`bootstrap` and `refresh` both open a real Chrome to sync receipts, so neither is fully
+unattended: log in once (MFA) and the persistent profile is reused. On an interval, prefer
+`food refresh` (sync + classify + stock) — it only pulls what's new.
+
+The steps are also available individually:
+
+```bash
+uv run food sync-ref                   # load the FoodKeeper shelf-life table (once)
+uv run food embed-ref                  # embed it for hybrid search (once; needs OPENROUTER_API_KEY)
+uv run food sync --retailer costco     # log in when Chrome opens (MFA)
+uv run food classify                   # canonicalize + resolve each item's shelf life
+uv run food stock                      # build/refresh the fridge & pantry
+```
 
 ### Commands
 
 | Command | What it does |
 |---|---|
+| `bootstrap [--days N] [--skip-ref] [--serve]` | Fresh setup: reference + N days of receipts + classify + stock |
+| `refresh [--lookback N] [--serve]` | Incremental sync + classify + stock, for an interval |
 | `sync-ref` | (Re)load USDA FoodKeeper into `shelf_life_ref` |
-| `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) matching |
+| `embed-ref` | Embed FoodKeeper rows for hybrid (keyword + semantic) search |
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
-| `classify` | Canonicalize unmapped items (parallel, cached), then ground remaining shelf life |
+| `classify` | Canonicalize unmapped items and resolve each item's shelf life (batched, cached) |
+| `resolve [--refresh] [--ids …] [--limit N]` | (Re)resolve shelf lives for stored products; default fills only the gaps |
 | `stock` | Build/refresh inventory and show what's expiring |
 | `status` | Counts and per-purpose LLM usage |
 | `digest` | LLM "use it or lose it" plan |
@@ -86,25 +117,23 @@ Refresh loop: `food sync && food classify && food stock`.
   `atlas` purchase-history endpoints. Raw JSON is archived in `data/imports/`, so a changed
   field needs a re-normalize, not a re-scrape. `food import` is the escape hatch when a
   scraper breaks.
-- **Shelf life.** USDA FoodKeeper (public domain) is the reference table. Matching is a stage
-  of its own, split from canonicalization: `reference.py` retrieves a shortlist with hybrid
-  keyword + semantic search (RRF; embeddings from OpenRouter), then one batched LLM call picks
-  the row. Retrieval runs on the *canonical* name (e.g. "Organic A2 Milk"), not the raw code —
-  `bench/retrieval_bench.py` measures canonical + rrf + rerank at ~0.94 recall@1. When a row is
-  picked its shelf life wins, otherwise the LLM's estimate stands. Units are converted from
-  FoodKeeper's `*_Metric` (Weeks/Months/…), and qualitative values ("Package use-by date") fall
-  through to the LLM. Each product records `shelf_life_source` (foodkeeper / llm / web).
+- **Shelf life.** USDA FoodKeeper (public domain) is the reference table, but it is a *hint, not
+  the authority*: its figures can be unrealistic (a milk row listing only a freezer value), so
+  the model supplies the final number. `resolve.py` runs per chunk of items: `reference.py`
+  retrieves each item's shortlist with hybrid keyword + semantic search (RRF; embeddings from
+  OpenRouter), then (1) a tool-calling agent researches it — searching the web only where no row
+  fits — and (2) a forced structured-output call turns the notes into one verdict per item (the
+  schema is the only tool bound, so the model cannot answer in prose). Each product records
+  `shelf_life_source` (foodkeeper / web / llm); units are converted from FoodKeeper's `*_Metric`
+  (Weeks/Months/…), and qualitative values fall through to the model. The retriever alone is
+  benchmarked in `bench/retrieval_bench.py`.
 - **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` (won a head-to-head benchmark:
   30/30 valid items in 52s vs 89s and 121s) with cheaper/free fallbacks. Batches run 6-wide.
   Chat and digest are cached and budgeted separately so they can't starve classification.
 - **LLM plumbing.** Built on LangChain: each model is a `ChatOpenAI` runnable wrapped with
   `.with_retry` and chained with `.with_fallbacks`, classification batches fan out through
-  `.batch(max_concurrency=…)`, and FoodKeeper retrieval is an `EnsembleRetriever` (BM25 +
-  embeddings).
-- **Shelf-life agent.** Anything still without a shelf life after FoodKeeper/LLM grounding
-  goes to a tool-calling agent: it answers from its own knowledge and searches the web only
-  when it needs to. Its verdict is trusted and written back as `shelf_life_source = web`
-  (re-expiry'ing any inventory rows already built) — there is no review queue to work through.
+  `.batch(max_concurrency=…)`, FoodKeeper retrieval is an `EnsembleRetriever` (lexical +
+  embeddings), and the resolver's synthesis step uses `with_structured_output`.
 - **Consumption.** Receipts say what you bought, not what's left. Inventory decays: rows
   expire at `acquired_on + shelf_life_days`, repeat purchases decrement oldest-first, and
   long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it

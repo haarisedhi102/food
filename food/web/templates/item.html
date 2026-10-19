@@ -7,6 +7,7 @@
   <h1 class="text-2xl font-semibold mt-2">{{ p.canonical_name }}</h1>
   <div class="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-2">
     {% if p.brand %}<span>{{ p.brand }}</span> · {% endif %}
+    {% if p.pkg_size %}<span>{{ p.pkg_size }}</span> · {% endif %}
     {% if p.category %}<span>{{ p.category }}</span> · {% endif %}
     {% if p.storage %}<span class="capitalize">{{ p.storage }}</span> · {% endif %}
     {% if p.is_perishable %}<span>perishable</span>{% else %}<span>shelf-stable</span>{% endif %}
@@ -23,9 +24,6 @@
         {% else %}bg-slate-100{% endif %}">
         source: {{ p.shelf_life_source }}
       </span>
-    {% endif %}
-    {% if p.foodkeeper_id %}
-      <span class="px-2 py-1 rounded bg-slate-100">FoodKeeper #{{ p.foodkeeper_id }}</span>
     {% endif %}
     <span class="px-2 py-1 rounded bg-slate-100">confidence {{ p.llm_confidence }}</span>
   </div>
