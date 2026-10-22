@@ -138,3 +138,44 @@ def test_canonicalize_resolves_shelf_life_for_food_only(monkeypatch):
     eggs = conn.execute("SELECT * FROM products WHERE canonical_name = 'Eggs'").fetchone()
     assert eggs["shelf_life_days"] == 21
     assert eggs["shelf_life_source"] == "llm"
+
+
+def test_non_perishable_food_skips_the_resolver(monkeypatch):
+    conn = _mem()
+
+    def fake_chat_json(conn, purpose, system, user, **kwargs):
+        return {
+            "items": [
+                {
+                    "item_key": "0001",
+                    "canonical_name": "Jasmine Rice",
+                    "category": "Pantry Staples",
+                    "is_food": True,
+                    "is_perishable": False,
+                    "storage": "pantry",
+                    "confidence": 0.9,
+                },
+                {
+                    "item_key": "0002",
+                    "canonical_name": "Eggs",
+                    "category": "Dairy Products & Eggs",
+                    "is_food": True,
+                    "is_perishable": True,
+                    "storage": "fridge",
+                    "confidence": 0.9,
+                },
+            ]
+        }
+
+    seen = {}
+
+    def fake_resolve(conn_, items, **kwargs):
+        seen["names"] = [it["name"] for it in items]
+        return {}
+
+    monkeypatch.setattr(canonicalize.llm, "chat_json", fake_chat_json)
+    monkeypatch.setattr(canonicalize.resolve, "resolve_batch", fake_resolve)
+
+    canonicalize.canonicalize(conn)
+
+    assert seen["names"] == ["Eggs"]

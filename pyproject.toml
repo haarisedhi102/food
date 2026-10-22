@@ -21,6 +21,7 @@ dependencies = [
     "langchain-community>=0.4.2",
     "rank-bm25>=0.2.2",
     "ddgs>=9.16.0",
+    "langchain-typesafe>=0.0.1a3",
 ]
 
 [project.scripts]
@@ -29,10 +30,8 @@ food = "food.cli:app"
 [dependency-groups]
 dev = ["pytest>=8.3"]
 tracing = [
-    "arize-phoenix>=4.0",
-    "arize-phoenix-otel>=0.6",
-    # arize-phoenix's strawberry-graphql breaks on graphql-core 3.3.0
-    "graphql-core<3.3",
+    "arize-phoenix>=20.24",
+    "arize-phoenix-otel>=0.17",
     "openinference-instrumentation-langchain>=0.1",
     "openinference-instrumentation-openai>=0.1",
 ]

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import array
 import sqlite3
+from functools import lru_cache
 from typing import Any
 
 from langchain_classic.retrievers import EnsembleRetriever
@@ -48,15 +49,20 @@ def _cosine(a, b) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
-def _embeddings(model: str | None = None) -> OpenAIEmbeddings:
+@lru_cache(maxsize=None)
+def _embeddings_cached(model: str) -> OpenAIEmbeddings:
     return OpenAIEmbeddings(
-        model=model or embeddings.model_name(),
+        model=model,
         api_key=config.OPENROUTER_API_KEY,
         base_url=config.EMBED_BASE_URL,
         chunk_size=config.EMBED_BATCH_SIZE,
         # the provider is OpenAI-compatible but not OpenAI; skip tiktoken-based chunking
         check_embedding_ctx_length=False,
     )
+
+
+def _embeddings(model: str | None = None) -> OpenAIEmbeddings:
+    return _embeddings_cached(model or embeddings.model_name())
 
 
 def embed_corpus(

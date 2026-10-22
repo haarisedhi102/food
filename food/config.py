@@ -34,6 +34,19 @@ FALLBACK_MODELS = [
     if m.strip()
 ]
 CLASSIFY_WORKERS = int(os.getenv("FOOD_CLASSIFY_WORKERS", "6"))
+RESOLVE_WORKERS = int(os.getenv("FOOD_RESOLVE_WORKERS", "4"))
+# Per-request controls: keep a slow generation from blocking the whole batch.
+LLM_TIMEOUT_S = float(os.getenv("FOOD_LLM_TIMEOUT_S", "120"))
+LLM_MAX_TOKENS = int(os.getenv("FOOD_LLM_MAX_TOKENS", "8192"))
+LLM_MAX_CONNECTIONS = int(os.getenv("FOOD_LLM_MAX_CONNECTIONS", "8"))
+
+# Jev (TypeSafe's typed decision model) for final shelf-life selection. It is only
+# used by the resolver, never by canonicalization. Uses the Command Code provider.
+JEV_ENABLED = os.getenv("FOOD_JEV_ENABLED", "1").lower() in ("1", "true", "yes")
+# Command Code's System One route; TypeSafeClassifier appends /v1/systemone.
+JEV_BASE_URL = os.getenv("FOOD_JEV_BASE_URL", "https://api.commandcode.ai/provider")
+JEV_MODEL = os.getenv("FOOD_JEV_MODEL", "typesafe/jev-1.14.0")
+JEV_TIMEOUT_S = float(os.getenv("FOOD_JEV_TIMEOUT_S", "8"))
 
 # Embeddings (OpenRouter, OpenAI-compatible /embeddings). Defaults to a cheap paid model:
 # the free tier caps at ~20 requests/min, which throttles per-item matching, and the paid

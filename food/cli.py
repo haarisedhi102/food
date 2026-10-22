@@ -453,7 +453,7 @@ def status() -> None:
             continue
         console.print(f"{label} = {rows[0]['c'] if rows else 0}")
 
-    for purpose in ("canonicalize", "chat", "digest"):
+    for purpose in ("canonicalize", "resolve_jev", "chat", "digest"):
         console.print(f"llm_calls[{purpose}] today = {llm.calls_today(conn, purpose)}")
     from . import canonicalize
 
