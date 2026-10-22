@@ -12,7 +12,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .. import db, inventory, llm
+from .. import config, db, inventory, llm
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 TEMPLATES.env.globals["relative"] = lambda days: _relative(days)
@@ -27,12 +27,7 @@ LOCATIONS = ["fridge", "freezer", "pantry", "counter"]
 USE_SOON_DAYS = 7
 # A shelf longer than this starts collapsed; see `_shelf_collapsed`. Only the pantry ever hits it.
 COLLAPSE_THRESHOLD = 50
-CHAT_SYSTEM = (
-    "You are a helpful kitchen assistant with access to the user's current fridge, freezer "
-    "and pantry, rebuilt from their Kroger and Costco receipts. Answer questions about what "
-    "they have and what is about to go bad. Be concise and specific; prefer naming items and "
-    "the days left. If asked for recipes, use ingredients that expire soonest first."
-)
+CHAT_SYSTEM = config.SHARED_PROMPTS["chat"]
 
 app = FastAPI(title="Virtual Fridge & Pantry")
 

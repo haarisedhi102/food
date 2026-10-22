@@ -2,10 +2,8 @@ import Foundation
 
 /// Port of the chat/digest prompts in `food/web/app.py` and `food/cli.py`.
 public enum Chat {
-    public static let system = "You are a helpful kitchen assistant with access to the user's current fridge, freezer and pantry, rebuilt from their Kroger and Costco receipts. Answer questions about what they have and what is about to go bad. Be concise and specific; prefer naming items and the days left. If asked for recipes, use ingredients that expire soonest first."
-
-    public static let digestSystem =
-        "You are a practical home cook. Given items about to expire, suggest what to make."
+    public static let system = SharedContract.prompts["chat"] ?? ""
+    public static let digestSystem = SharedContract.prompts["digest"] ?? ""
 
     /// "days left" from `expires_on` vs today (UTC, matching how dates are parsed).
     public static func daysLeft(_ expiresOn: String?) -> Int? {

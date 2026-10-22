@@ -39,36 +39,11 @@ ATTEMPTS = 3  # retries per phase for a transient provider error (e.g. HTTP 524)
 
 T = TypeVar("T")
 
-RESEARCH_SYSTEM = """You research how long grocery items keep. You receive several items at
-once, and for each a shortlist of FoodKeeper reference rows with their shelf-life figures in
-days (pantry, refrigerate, freezer, after opening).
+RESEARCH_SYSTEM = config.SHARED_PROMPTS["research"]
 
-For each item decide the shelf life to use and where it comes from:
-- a FoodKeeper row, when a candidate is genuinely the same food and its figures make sense.
-  FoodKeeper rows can be sparse or odd (e.g. a milk row with only a freezer figure and no
-  refrigerated days) — if a candidate only loosely fits, do not use it;
-- the web_search tool, when no row fits — search authoritative guidance (USDA/FoodKeeper,
-  food-safety agencies, manufacturers);
-- your own knowledge, when you are already confident.
 
-Then write a short note per item, quoting its id: the shelf life in days, the source (the
-FoodKeeper row used, the web, or your own knowledge), and the storage it applies to. Do NOT
-return JSON — just notes."""
 
-SYNTH_SYSTEM = """You convert grocery shelf-life research notes into one structured verdict per
-item. Return one entry per item, echoing that item's `id` in `item_id`. For each:
-- source: "foodkeeper" if a FoodKeeper row was used, else "web" or "llm";
-- shelf_life_days: YOUR best shelf life in whole days. Treat FoodKeeper as a slightly preferred
-  source, not the authority — its figures can be unrealistic (a row listing only a 3-month
-  freezer figure does not mean 90 days of fridge life). Use judgement; null only when the item
-  is non-perishable;
-- is_perishable: false for dry goods, canned, spices.
-
-Examples (item id, name, storage -> verdict):
-  12 "Whole Milk", fridge          -> {"item_id": 12, "source": "foodkeeper", "shelf_life_days": 7, "is_perishable": true}
-  30 "Jasmine Rice", pantry        -> {"item_id": 30, "source": "foodkeeper", "shelf_life_days": null, "is_perishable": false}
-  41 "Unsweetened Oatmilk", fridge -> {"item_id": 41, "source": "web", "shelf_life_days": 7, "is_perishable": true}
-  55 "Roma Tomato", counter        -> {"item_id": 55, "source": "llm", "shelf_life_days": 7, "is_perishable": true}"""
+SYNTH_SYSTEM = config.SHARED_PROMPTS["synthesis"]
 
 
 class ItemVerdict(BaseModel):
@@ -216,18 +191,8 @@ JEV_DAYS = {
     "d91_180": 180,
     "d181_365": 365,
 }
-JEV_DAY_CRITERIA = {
-    "d0": "0 days (use today; already spoiled)",
-    "d1_2": "1-2 days (fresh fish, cut fruit, leftovers)",
-    "d3_4": "3-4 days (fresh bread, cooked rice, open deli meat)",
-    "d5_7": "5-7 days (fluid milk, yogurt, bananas on the counter)",
-    "d8_14": "8-14 days (bell peppers, tomatoes, opened cheese)",
-    "d15_30": "15-30 days (eggs, hard cheese, apples)",
-    "d31_90": "31-90 days (root vegetables, winter squash, unopened juice)",
-    "d91_180": "91-180 days (frozen meat, unopened shelf-stable items)",
-    "d181_365": "181-365 days (canned goods, dry staples)",
-    "d365p": "more than 365 days, or non-perishable",
-}
+JEV_DAY_CRITERIA = config.SHARED_JEV["day_criteria"]
+
 JEV_RANGES = {
     "d0": (0, 0),
     "d1_2": (1, 2),
@@ -239,12 +204,9 @@ JEV_RANGES = {
     "d91_180": (91, 180),
     "d181_365": (181, 365),
 }
-JEV_STORAGE_CRITERIA = {
-    "fridge": "Refrigerated.",
-    "freezer": "Frozen.",
-    "pantry": "Shelf-stable, dry, or canned.",
-    "counter": "Room-temperature counter, such as fresh produce or bread.",
-}
+JEV_STORAGE_CRITERIA = config.SHARED_JEV["storage_criteria"]
+
+
 
 
 def _jev_questions(

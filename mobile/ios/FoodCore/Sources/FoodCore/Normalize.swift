@@ -48,7 +48,8 @@ public enum Normalizer {
                     purchasedOn: localDate(r["transactionDateTime"] ?? r["transactionDate"]),
                     store: str(r["warehouseName"]),
                     totalCents: cents(r["total"]),
-                    items: items
+                    items: items,
+                    rawJSON: jsonString(r)
                 )
             )
         }
@@ -128,7 +129,8 @@ public enum Normalizer {
                     purchasedOn: localDate((rec["createdDateTime"] as? [String: Any])?["value"]),
                     store: str(rec["handoffStoreId"]),
                     totalCents: cents(total),
-                    items: items
+                    items: items,
+                    rawJSON: jsonString(rec)
                 )
             )
         }
@@ -197,5 +199,13 @@ public enum Normalizer {
         guard let v = v, !(v is NSNull) else { return nil }
         if let s = v as? String { return s }
         return String(describing: v)
+    }
+
+    static func jsonString(_ object: Any) -> String? {
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object) else {
+            return nil
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 }

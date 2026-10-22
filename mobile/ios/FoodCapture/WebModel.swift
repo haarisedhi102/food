@@ -1,3 +1,4 @@
+import FoodCore
 import SwiftUI
 import WebKit
 
@@ -324,11 +325,7 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
       }
       if (start > end) start = end;
       const fmt = (d) => `${pad(d.getMonth()+1)}/${pad(d.getDate())}/${d.getFullYear()}`;
-      const query = `query receiptsWithCounts($startDate: String!, $endDate: String!, $documentType: String!, $documentSubType: String!) {
-        receiptsWithCounts(startDate: $startDate, endDate: $endDate, documentType: $documentType, documentSubType: $documentSubType) {
-          receipts { transactionBarcode transactionDateTime warehouseName total itemArray { itemNumber itemDescription01 unit amount itemUnitPriceAmount } }
-        }
-      }`;
+      const query = `\(SharedContract.costcoQuery)`;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 25000);
       const r = await fetch('https://ecom-api.costco.com/ebusiness/order/v1/orders/graphql', {

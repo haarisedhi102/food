@@ -1,0 +1,51 @@
+{
+  "raw": {
+    "data": {
+      "receiptsWithCounts": {
+        "receipts": [
+          {
+            "transactionBarcode": "T1",
+            "transactionDate": "2026-01-02",
+            "transactionDateTime": "2026-01-02T10:00:00",
+            "warehouseNumber": "123",
+            "warehouseName": "Test Warehouse",
+            "transactionNumber": "456",
+            "total": 12.34,
+            "itemArray": [
+              {
+                "itemNumber": "999",
+                "itemDescription01": "MILK",
+                "itemDescription02": "2%",
+                "unit": 1,
+                "amount": 5.0,
+                "itemUnitPriceAmount": 5.0
+              },
+              {
+                "itemNumber": "888",
+                "itemDescription01": "DISCOUNT",
+                "unit": -1,
+                "amount": -1.0
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "expected": {
+    "external_id": "T1",
+    "purchased_on": "2026-01-02",
+    "store": "Test Warehouse",
+    "total_cents": 1234,
+    "items": [
+      {
+        "raw_description": "MILK 2%",
+        "item_key": "999",
+        "raw_pkg_size": null,
+        "quantity": 1.0,
+        "unit_price_cents": 500,
+        "line_total_cents": 500
+      }
+    ]
+  }
+}

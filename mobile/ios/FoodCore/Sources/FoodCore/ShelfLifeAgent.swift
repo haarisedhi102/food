@@ -18,40 +18,9 @@ public enum ShelfLifeAgent {
 
     public typealias Search = @Sendable (String) async -> String
 
-    public static let researchSystem = """
-    You research how long grocery items keep. You receive several items at
-    once, and for each a shortlist of FoodKeeper reference rows with their shelf-life figures in
-    days (pantry, refrigerate, freezer, after opening).
+    public static let researchSystem = SharedContract.prompts["research"] ?? ""
 
-    For each item decide the shelf life to use and where it comes from:
-    - a FoodKeeper row, when a candidate is genuinely the same food and its figures make sense.
-      FoodKeeper rows can be sparse or odd (e.g. a milk row with only a freezer figure and no
-      refrigerated days) — if a candidate only loosely fits, do not use it;
-    - the web_search tool, when no row fits — search authoritative guidance (USDA/FoodKeeper,
-      food-safety agencies, manufacturers);
-    - your own knowledge, when you are already confident.
-
-    Then write a short note per item, quoting its id: the shelf life in days, the source (the
-    FoodKeeper row used, the web, or your own knowledge), and the storage it applies to. Do NOT
-    return JSON — just notes.
-    """
-
-    public static let synthSystem = """
-    You convert grocery shelf-life research notes into one structured verdict per
-    item. Return one entry per item, echoing that item's `id` in `item_id`. For each:
-    - source: "foodkeeper" if a FoodKeeper row was used, else "web" or "llm";
-    - shelf_life_days: YOUR best shelf life in whole days. Treat FoodKeeper as a slightly preferred
-      source, not the authority — its figures can be unrealistic (a row listing only a 3-month
-      freezer figure does not mean 90 days of fridge life). Use judgement; null only when the item
-      is non-perishable;
-    - is_perishable: false for dry goods, canned, spices.
-
-    Examples (item id, name, storage -> verdict):
-      12 "Whole Milk", fridge          -> {"item_id": 12, "source": "foodkeeper", "shelf_life_days": 7, "is_perishable": true}
-      30 "Jasmine Rice", pantry        -> {"item_id": 30, "source": "foodkeeper", "shelf_life_days": null, "is_perishable": false}
-      41 "Unsweetened Oatmilk", fridge -> {"item_id": 41, "source": "web", "shelf_life_days": 7, "is_perishable": true}
-      55 "Roma Tomato", counter        -> {"item_id": 55, "source": "llm", "shelf_life_days": 7, "is_perishable": true}
-    """
+    public static let synthSystem = SharedContract.prompts["synthesis"] ?? ""
 
     public static let webSearchTool: [String: Any] = [
         "type": "function",
@@ -105,6 +74,31 @@ public enum ShelfLifeAgent {
         ] as [String: Any],
     ]
 
+    static let jevDays: [String: Int] = [
+        "d0": 0,
+        "d1_2": 2,
+        "d3_4": 4,
+        "d5_7": 7,
+        "d8_14": 14,
+        "d15_30": 30,
+        "d31_90": 90,
+        "d91_180": 180,
+        "d181_365": 365,
+    ]
+    static let jevRanges: [String: (Int, Int)] = [
+        "d0": (0, 0),
+        "d1_2": (1, 2),
+        "d3_4": (3, 4),
+        "d5_7": (5, 7),
+        "d8_14": (8, 14),
+        "d15_30": (15, 30),
+        "d31_90": (31, 90),
+        "d91_180": (91, 180),
+        "d181_365": (181, 365),
+    ]
+    static let jevDayCriteria = SharedContract.jev.dayCriteria
+    static let jevStorageCriteria = SharedContract.jev.storageCriteria
+
     public struct ItemVerdict: Codable, Equatable {
         public var itemID: Int
         public var source: String
@@ -113,6 +107,19 @@ public enum ShelfLifeAgent {
         public var storage: String?
         public var isPerishable: Bool
         public var confidence: Double
+
+        public init(
+            itemID: Int, source: String, shelfLifeDays: Int?, shelfLifeDaysOpened: Int?,
+            storage: String?, isPerishable: Bool, confidence: Double
+        ) {
+            self.itemID = itemID
+            self.source = source
+            self.shelfLifeDays = shelfLifeDays
+            self.shelfLifeDaysOpened = shelfLifeDaysOpened
+            self.storage = storage
+            self.isPerishable = isPerishable
+            self.confidence = confidence
+        }
 
         enum CodingKeys: String, CodingKey {
             case itemID = "item_id"
@@ -163,8 +170,9 @@ public enum ShelfLifeAgent {
         items: [[String: Any]],
         provider: LLMProvider,
         embedModel: String? = nil,
+        jev: JevProvider? = nil,
         topn: Int = 5,
-        search: Search = { await WebSearch.duckDuckGo($0) },
+        search: @escaping Search = { await WebSearch.duckDuckGo($0) },
         progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Stats {
         let items = items.filter { $0["id"] is Int && $0["name"] is String }
@@ -174,21 +182,52 @@ public enum ShelfLifeAgent {
             db, items: items, provider: provider, model: embedModel, topn: topn
         )
 
-        let chunks = (items.count + resolveChunk - 1) / resolveChunk
-        var stats = Stats()
-        var start = 0
-        var index = 0
-        while start < items.count {
-            let chunk = Array(items[start ..< min(start + resolveChunk, items.count)])
-            index += 1
-            progress?("Resolving shelf life, part \(index) of \(chunks)…")
+        let chunkList = stride(from: 0, to: items.count, by: resolveChunk).map {
+            Array(items[$0 ..< min($0 + resolveChunk, items.count)])
+        }
+        for (index, _) in chunkList.enumerated() {
+            progress?("Resolving shelf life, part \(index + 1) of \(chunkList.count)…")
+        }
+        let workers = max(1, provider.config.resolveWorkers)
+
+        func resolveOne(_ index: Int) async -> (Int, [Int: ItemVerdict]) {
             let verdicts = await resolveChunk(
-                chunk, shortlists: lists, provider: provider, search: search
+                chunkList[index], shortlists: lists, provider: provider, jev: jev,
+                search: search
             )
+            return (index, verdicts)
+        }
+
+        var results: [(index: Int, verdicts: [Int: ItemVerdict])] = []
+        if workers == 1 || chunkList.count == 1 {
+            for index in chunkList.indices {
+                results.append(await resolveOne(index))
+            }
+        } else {
+            await withTaskGroup(of: (Int, [Int: ItemVerdict]).self) { group in
+                var next = 0
+                let initial = min(workers, chunkList.count)
+                for index in 0 ..< initial {
+                    group.addTask { await resolveOne(index) }
+                }
+                next = initial
+                while let result = await group.next() {
+                    results.append(result)
+                    if next < chunkList.count {
+                        let index = next
+                        next += 1
+                        group.addTask { await resolveOne(index) }
+                    }
+                }
+            }
+        }
+
+        var stats = Stats()
+        for (index, verdicts) in results.sorted(by: { $0.index < $1.index }) {
+            let chunk = chunkList[index]
             stats.resolved += try apply(db, items: chunk, verdicts: verdicts)
             stats.unresolved += chunk.count - verdicts.count
             if verdicts.isEmpty { stats.errors += 1 }
-            start += resolveChunk
         }
         return stats
     }
@@ -201,8 +240,9 @@ public enum ShelfLifeAgent {
         provider: LLMProvider,
         limit: Int? = nil,
         embedModel: String? = nil,
+        jev: JevProvider? = nil,
         topn: Int = 5,
-        search: Search = { await WebSearch.duckDuckGo($0) },
+        search: @escaping Search = { await WebSearch.duckDuckGo($0) },
         progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Stats {
         var sql = """
@@ -225,7 +265,7 @@ public enum ShelfLifeAgent {
         }
         return try await resolveBatch(
             db, items: items, provider: provider, embedModel: embedModel,
-            topn: topn, search: search, progress: progress
+            jev: jev, topn: topn, search: search, progress: progress
         )
     }
 
@@ -235,6 +275,7 @@ public enum ShelfLifeAgent {
         _ chunk: [[String: Any]],
         shortlists: [Int: [[String: Any]]],
         provider: LLMProvider,
+        jev: JevProvider?,
         search: Search
     ) async -> [Int: ItemVerdict] {
         let payload = payloadFor(chunk, shortlists: shortlists)
@@ -242,6 +283,14 @@ public enum ShelfLifeAgent {
         guard let findings = await retry("research", count: chunk.count, {
             try await research(payload, provider: provider, search: search)
         }) else { return [:] }
+
+        if let jev {
+            // Jev is terminal. Do not synthesize with the LLM after it.
+            return await jevVerdicts(
+                chunk, shortlists: shortlists, findings: findings, jev: jev
+            )
+        }
+
         guard let verdict = await retry("synthesis", count: chunk.count, {
             try await synthesize(payload, findings: findings, provider: provider)
         }) else { return [:] }
@@ -298,19 +347,185 @@ public enum ShelfLifeAgent {
         _ payload: [[String: Any]], findings: String, provider: LLMProvider
     ) async throws -> BatchVerdict? {
         let user = Reference.jsonString(["items": payload, "research_notes": findings])
-        let reply = try await provider.chat(
-            messages: [
-                ["role": "system", "content": synthSystem],
-                ["role": "user", "content": user],
-            ],
-            tools: [verdictTool],
-            temperature: 0,
+        var messages: [[String: Any]] = [
+            ["role": "system", "content": synthSystem],
+            ["role": "user", "content": user],
+        ]
+        var reply = try await provider.chat(
+            messages: messages, tools: [verdictTool], temperature: 0,
             forceTool: verdictToolName
         )
+        if reply.toolCalls.isEmpty {
+            messages.append(assistantMessage(reply))
+            messages.append([
+                "role": "user",
+                "content": "You must call the shelf_life_verdicts tool now. "
+                    + "Return one verdict per item and do not answer in prose.",
+            ])
+            reply = try await provider.chat(
+                messages: messages, tools: [verdictTool], temperature: 0,
+                forceTool: verdictToolName
+            )
+        }
         guard let call = reply.toolCalls.first(where: { $0.name == verdictToolName })
                 ?? reply.toolCalls.first,
               let data = call.arguments.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(BatchVerdict.self, from: data)
+    }
+
+    // MARK: - Jev terminal synthesis
+
+    static func jevQuestions(
+        _ chunk: [[String: Any]], shortlists: [Int: [[String: Any]]]
+    ) -> [String: Any] {
+        var questions: [String: Any] = [:]
+        for item in chunk {
+            guard let id = item["id"] as? Int, let name = item["name"] as? String else { continue }
+            let category = item["category"] as? String ?? "unknown"
+            let storage = item["storage"] as? String ?? "unknown"
+            questions["item_\(id)_perishable"] = [
+                "type": "noul",
+                "instructions": "Is item \(id) (\(name), category \(category), stored "
+                    + "\(storage)) perishable and likely to expire? Use the research notes in state.",
+            ]
+            questions["item_\(id)_storage"] = [
+                "type": "choice",
+                "instructions": "What is the correct storage location for item \(id) (\(name))?",
+                "criteria": jevStorageCriteria,
+            ]
+            questions["item_\(id)_days"] = [
+                "type": "choice",
+                "instructions": "How long does item \(id) (\(name), category \(category), "
+                    + "stored \(storage)) keep before it should be used? Use the research notes "
+                    + "and FoodKeeper candidates in state. Calibration examples: fluid milk in "
+                    + "the fridge -> 5-7 days; fresh bread -> 3-4 days; eggs in the fridge -> "
+                    + "15-30 days; bananas on the counter -> 5-7 days. Do not put fluid milk in "
+                    + "31-90 days.",
+                "criteria": jevDayCriteria,
+            ]
+            var criteria: [String: String] = [:]
+            for (index, candidate) in (shortlists[id] ?? []).enumerated() {
+                let cname = candidate["name"] as? String ?? ""
+                if let subtitle = candidate["subtitle"] as? String, !subtitle.isEmpty {
+                    criteria["c\(index)"] = "\(cname) — \(subtitle)"
+                } else {
+                    criteria["c\(index)"] = cname
+                }
+            }
+            criteria["none"] = "No listed FoodKeeper row is the same food."
+            questions["item_\(id)_candidate"] = [
+                "type": "choice",
+                "instructions": "Which FoodKeeper row is genuinely the same food as item "
+                    + "\(id) (\(name))? Pick none when no row fits.",
+                "criteria": criteria,
+            ]
+        }
+        return questions
+    }
+
+    static func candidateDays(_ candidate: [String: Any], storage: String) -> Int? {
+        let key: String
+        switch storage {
+        case "fridge": key = "refrigerate_days"
+        case "freezer": key = "freezer_days"
+        case "pantry", "counter": key = "pantry_days"
+        default: key = "pantry_days"
+        }
+        return candidate[key] as? Int
+    }
+
+    static func jevVerdicts(
+        _ chunk: [[String: Any]],
+        shortlists: [Int: [[String: Any]]],
+        findings: String,
+        jev: JevProvider
+    ) async -> [Int: ItemVerdict] {
+        let payload = payloadFor(chunk, shortlists: shortlists)
+        let state: [String: Any] = ["items": payload, "research_notes": findings]
+        let response: JevResponse
+        do {
+            response = try await jev.decide(
+                state: state, questions: jevQuestions(chunk, shortlists: shortlists)
+            )
+        } catch {
+            print("    Jev unavailable; leaving items for the next sync: \(error)")
+            return [:]
+        }
+
+        var out: [Int: ItemVerdict] = [:]
+        for item in chunk {
+            guard let id = item["id"] as? Int,
+                  let perish = response.answers["item_\(id)_perishable"],
+                  let storageAnswer = response.answers["item_\(id)_storage"],
+                  let daysAnswer = response.answers["item_\(id)_days"]
+            else { continue }
+
+            let probability = perish.noul ?? 0
+            let isPerishable = probability >= 0.5
+            let perishConfidence = max(probability, 1 - probability)
+            let storage = storageAnswer.choice ?? (item["storage"] as? String) ?? "pantry"
+            let storageConfidence = storageAnswer.confidence ?? 0
+
+            if !isPerishable {
+                out[id] = ItemVerdict(
+                    itemID: id, source: "jev", shelfLifeDays: nil,
+                    shelfLifeDaysOpened: nil, storage: storage,
+                    isPerishable: false,
+                    confidence: min(perishConfidence, storageConfidence)
+                )
+                continue
+            }
+
+            let daysChoice = daysAnswer.choice
+            let daysConfidence = daysAnswer.confidence ?? 0
+            let candidates = shortlists[id] ?? []
+            let candidateAnswer = response.answers["item_\(id)_candidate"]
+            let candidateConfidence = candidateAnswer?.confidence ?? 0
+            var chosenCandidate: [String: Any]?
+            if let chosen = candidateAnswer?.choice, chosen != "none", chosen.hasPrefix("c"),
+               let index = Int(chosen.dropFirst()), index < candidates.count {
+                chosenCandidate = candidates[index]
+            }
+            let exactDays = chosenCandidate.flatMap {
+                candidateDays($0, storage: storage)
+            }
+            let bucket = daysChoice.flatMap { jevRanges[$0] }
+            let agrees: Bool
+            if let bucket, let exactDays {
+                agrees = bucket.0 <= exactDays && exactDays <= bucket.1
+            } else {
+                agrees = false
+            }
+
+            if let exactDays, candidateConfidence >= 0.5 || agrees {
+                let opened = chosenCandidate?["after_opening_days"] as? Int
+                let confidence = min(
+                    min(perishConfidence, storageConfidence),
+                    candidateConfidence == 0 ? 0.5 : candidateConfidence
+                )
+                out[id] = ItemVerdict(
+                    itemID: id, source: "foodkeeper", shelfLifeDays: exactDays,
+                    shelfLifeDaysOpened: opened, storage: storage,
+                    isPerishable: true, confidence: confidence
+                )
+                continue
+            }
+
+            var days: Int?
+            if let daysChoice, let range = jevRanges[daysChoice] {
+                let wide = range.1 - range.0 > 7
+                if !(daysConfidence < 0.5 || (wide && daysConfidence < 0.8)) {
+                    days = daysChoice == "d365p" ? 365 : jevDays[daysChoice]
+                }
+            }
+            out[id] = ItemVerdict(
+                itemID: id, source: "jev", shelfLifeDays: days,
+                shelfLifeDaysOpened: nil, storage: storage,
+                isPerishable: true,
+                confidence: min(min(perishConfidence, storageConfidence), daysConfidence)
+            )
+        }
+        return out
     }
 
     /// Run `work`, retrying a few times on a transient error *or* when it yields nothing.
@@ -322,12 +537,22 @@ public enum ShelfLifeAgent {
             do {
                 if let value = try await work() { return value }
             } catch {
+                if isRateLimit(error) {
+                    print("    shelf-life \(phase) rate limited; not retrying")
+                    return nil
+                }
                 last = String(describing: error)
             }
             try? await Task.sleep(nanoseconds: UInt64(1.5 * Double(attempt + 1) * 1_000_000_000))
         }
         print("    shelf-life \(phase) failed (\(count) items): \(last)")
         return nil
+    }
+
+    static func isRateLimit(_ error: Error) -> Bool {
+        let text = String(describing: error).lowercased()
+        return text.contains("429") || text.contains("rate limit")
+            || text.contains("too many requests")
     }
 
     static func collect(_ verdict: BatchVerdict, items: [[String: Any]]) -> [Int: ItemVerdict] {

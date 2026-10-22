@@ -70,14 +70,11 @@ public enum Reference {
 
     static func cosine(_ a: [Float], _ b: [Float]) -> Double {
         guard a.count == b.count else { return 0 }
-        var dot = 0.0, na = 0.0, nb = 0.0
-        for i in 0..<a.count {
-            dot += Double(a[i] * b[i])
-            na += Double(a[i] * a[i])
-            nb += Double(b[i] * b[i])
-        }
-        guard na > 0, nb > 0 else { return 0 }
-        return dot / (na.squareRoot() * nb.squareRoot())
+        // Matches Python's `reference._cosine`: a bare dot product over the provider's
+        // embeddings, which are expected to be normalized.
+        var dot = 0.0
+        for i in 0..<a.count { dot += Double(a[i] * b[i]) }
+        return dot
     }
 
     /// `embed_corpus`: embed and store FoodKeeper rows missing an embedding for `model`.
@@ -148,7 +145,8 @@ public enum Reference {
             let weight = i < weights.count ? weights[i] : 1.0
             for (rank, id) in list.enumerated() {
                 if scores[id] == nil { order.append(id) }
-                scores[id, default: 0] += weight * (1.0 / (Double(rank) + c))
+                // LangChain's EnsembleRetriever enumerates ranks from 1.
+                scores[id, default: 0] += weight * (1.0 / (Double(rank + 1) + c))
             }
         }
         return order.sorted { a, b in

@@ -32,7 +32,7 @@ public enum Store {
                         .text(r.purchasedOn ?? "1970-01-01"),
                         r.store.map { SQLValue.text($0) } ?? .null,
                         r.totalCents.map { SQLValue.int(Int64($0)) } ?? .null,
-                        .null,
+                        r.rawJSON.map { SQLValue.text($0) } ?? .null,
                     ]
                 )
                 rid = db.lastInsertRowID

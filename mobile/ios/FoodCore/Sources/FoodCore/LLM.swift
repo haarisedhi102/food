@@ -12,6 +12,14 @@ public struct ProviderConfig: Sendable {
     public var embedBaseURL: String
     public var embedModel: String
     public var embedAPIKey: String
+    public var jevBaseURL: String
+    public var jevModel: String
+    public var jevEnabled: Bool
+    public var jevTimeout: Double
+    public var classifyWorkers: Int
+    public var resolveWorkers: Int
+    public var llmTimeout: Double
+    public var llmMaxTokens: Int
 
     public init(
         baseURL: String = "https://api.commandcode.ai/provider/v1",
@@ -20,7 +28,15 @@ public struct ProviderConfig: Sendable {
         temperature: Double = 0.0,
         embedBaseURL: String = "https://openrouter.ai/api/v1",
         embedModel: String = "baai/bge-base-en-v1.5",
-        embedAPIKey: String = ""
+        embedAPIKey: String = "",
+        jevBaseURL: String = SharedContract.config.jevBaseURL,
+        jevModel: String = SharedContract.config.jevModel,
+        jevEnabled: Bool = SharedContract.config.jevEnabled,
+        jevTimeout: Double = SharedContract.config.jevTimeoutS,
+        classifyWorkers: Int = SharedContract.config.classifyWorkers,
+        resolveWorkers: Int = SharedContract.config.resolveWorkers,
+        llmTimeout: Double = SharedContract.config.llmTimeoutS,
+        llmMaxTokens: Int = SharedContract.config.llmMaxTokens
     ) {
         self.baseURL = baseURL
         self.apiKey = apiKey
@@ -29,6 +45,14 @@ public struct ProviderConfig: Sendable {
         self.embedBaseURL = embedBaseURL
         self.embedModel = embedModel
         self.embedAPIKey = embedAPIKey
+        self.jevBaseURL = jevBaseURL
+        self.jevModel = jevModel
+        self.jevEnabled = jevEnabled
+        self.jevTimeout = jevTimeout
+        self.classifyWorkers = classifyWorkers
+        self.resolveWorkers = resolveWorkers
+        self.llmTimeout = llmTimeout
+        self.llmMaxTokens = llmMaxTokens
     }
 
     public var embeddingsConfigured: Bool { !embedAPIKey.isEmpty }
@@ -50,13 +74,29 @@ public struct ProviderConfig: Sendable {
         let fallbacks = (env["FOOD_FALLBACK_MODELS"] ?? "")
             .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        let jevEnabled = ["1", "true", "yes"].contains(
+            (env["FOOD_JEV_ENABLED"] ?? "1").lowercased()
+        )
         return ProviderConfig(
             baseURL: env["FOOD_BASE_URL"] ?? "https://api.commandcode.ai/provider/v1",
             apiKey: env["CMD_API_KEY"] ?? "",
             models: [env["FOOD_MODEL"] ?? "xiaomi/mimo-v2.6-flash"] + fallbacks,
             embedBaseURL: env["FOOD_EMBED_BASE_URL"] ?? "https://openrouter.ai/api/v1",
             embedModel: env["FOOD_EMBED_MODEL"] ?? "baai/bge-base-en-v1.5",
-            embedAPIKey: env["OPENROUTER_API_KEY"] ?? ""
+            embedAPIKey: env["OPENROUTER_API_KEY"] ?? "",
+            jevBaseURL: env["FOOD_JEV_BASE_URL"] ?? SharedContract.config.jevBaseURL,
+            jevModel: env["FOOD_JEV_MODEL"] ?? SharedContract.config.jevModel,
+            jevEnabled: jevEnabled,
+            jevTimeout: Double(env["FOOD_JEV_TIMEOUT_S"] ?? "")
+                ?? SharedContract.config.jevTimeoutS,
+            classifyWorkers: Int(env["FOOD_CLASSIFY_WORKERS"] ?? "")
+                ?? SharedContract.config.classifyWorkers,
+            resolveWorkers: Int(env["FOOD_RESOLVE_WORKERS"] ?? "")
+                ?? SharedContract.config.resolveWorkers,
+            llmTimeout: Double(env["FOOD_LLM_TIMEOUT_S"] ?? "")
+                ?? SharedContract.config.llmTimeoutS,
+            llmMaxTokens: Int(env["FOOD_LLM_MAX_TOKENS"] ?? "")
+                ?? SharedContract.config.llmMaxTokens
         )
     }
 }
@@ -95,6 +135,7 @@ public struct ChatCompletion {
 }
 
 public protocol LLMProvider {
+    var config: ProviderConfig { get }
     func chatJSON(system: String, user: String, temperature: Double) async throws -> ChatResponse
     func embed(_ texts: [String]) async throws -> [[Float]]
     func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion
@@ -107,6 +148,8 @@ public protocol LLMProvider {
 
 public extension LLMProvider {
     // Defaults keep the plain (non-agent) test doubles small.
+    var config: ProviderConfig { ProviderConfig.fromEnvironment() }
+
     func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion {
         throw LLMError.notConfigured("this provider does not support tool-calling chat")
     }

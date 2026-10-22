@@ -7,6 +7,7 @@ import time
 from datetime import date, timedelta
 from typing import Any
 
+from .. import config
 from . import browser as b
 
 GRAPHQL_URL = "https://ecom-api.costco.com/ebusiness/order/v1/orders/graphql"
@@ -44,44 +45,7 @@ TOKEN_STATE_JS = """() => {
   }
 }"""
 
-QUERY = """
-query receiptsWithCounts($startDate: String!, $endDate: String!, $documentType: String!, $documentSubType: String!) {
-  receiptsWithCounts(startDate: $startDate, endDate: $endDate, documentType: $documentType, documentSubType: $documentSubType) {
-    inWarehouse
-    gasStation
-    carWash
-    gasAndCarWash
-    receipts {
-      transactionBarcode
-      transactionDate
-      transactionDateTime
-      transactionType
-      documentType
-      receiptType
-      warehouseName
-      warehouseNumber
-      warehouseCity
-      warehouseState
-      membershipNumber
-      total
-      subTotal
-      totalItemCount
-      itemArray {
-        itemNumber
-        itemDescription01
-        itemDescription02
-        itemIdentifier
-        itemDepartmentNumber
-        transDepartmentNumber
-        unit
-        amount
-        itemUnitPriceAmount
-        taxFlag
-      }
-    }
-  }
-}
-"""
+QUERY = (config.SHARED_DIR / "costco.graphql").read_text().strip()
 
 
 def _headers(id_token: str) -> dict[str, str]:

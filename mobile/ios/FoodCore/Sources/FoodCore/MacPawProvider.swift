@@ -29,9 +29,8 @@ public final class MacPawProvider: LLMProvider {
             port: url.port ?? (url.scheme == "http" ? 80 : 443),
             scheme: url.scheme ?? "https",
             basePath: basePath,
-            // The reasoning model can take >60s on a 30-item batch (Python's client uses a
-            // much longer default). 60s was timing out the whole batch and poisoning item_map.
-            timeoutInterval: 180,
+            // Shared with Python via shared/config.json.
+            timeoutInterval: SharedContract.config.llmTimeoutS,
             parsingOptions: .relaxed
         )
         return OpenAI(configuration: configuration)
@@ -45,6 +44,7 @@ public final class MacPawProvider: LLMProvider {
         let query = ChatQuery(
             messages: [.system(.init(content: .textContent(system))), .user(.init(content: .string(user)))],
             model: primaryModel,
+            maxCompletionTokens: config.llmMaxTokens,
             temperature: temperature
         )
         let result = try await chatClient.chats(query: query)
@@ -58,6 +58,7 @@ public final class MacPawProvider: LLMProvider {
         let query = ChatQuery(
             messages: [.system(.init(content: .textContent(system))), .user(.init(content: .string(user)))],
             model: primaryModel,
+            maxCompletionTokens: config.llmMaxTokens,
             temperature: temperature
         )
         return try await chatClient.chats(query: query).choices.first?.message.content ?? ""
@@ -77,6 +78,7 @@ public final class MacPawProvider: LLMProvider {
         let query = ChatQuery(
             messages: params,
             model: primaryModel,
+            maxCompletionTokens: config.llmMaxTokens,
             temperature: temperature,
             toolChoice: forceTool.map { .function($0) },
             tools: toolParams

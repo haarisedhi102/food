@@ -420,7 +420,7 @@ def digest(days: int = typer.Option(3, help="Horizon in days")) -> None:
         text = llm.chat_text(
             conn,
             "digest",
-            "You are a practical home cook. Given items about to expire, suggest what to make.",
+            config.SHARED_PROMPTS["digest"],
             f"Use these up soon:\n{listed}\n\nSuggest a short plan.",
             use_cache=True,
         )

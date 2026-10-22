@@ -43,5 +43,8 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["food"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"mobile/ios/FoodCore/Sources/FoodCore/Resources" = "shared"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

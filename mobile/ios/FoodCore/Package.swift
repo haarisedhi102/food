@@ -17,7 +17,8 @@ let package = Package(
     targets: [
         .target(
             name: "FoodCore",
-            dependencies: [.product(name: "OpenAI", package: "OpenAI")]
+            dependencies: [.product(name: "OpenAI", package: "OpenAI")],
+            resources: [.copy("Resources")]
         ),
         .executableTarget(name: "foodcore-cli", dependencies: ["FoodCore"], path: "Sources/foodcore-cli"),
         .testTarget(

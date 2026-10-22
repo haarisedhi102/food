@@ -1,0 +1,11 @@
+{
+  "classify_workers": 6,
+  "resolve_workers": 4,
+  "llm_timeout_s": 120.0,
+  "llm_max_tokens": 8192,
+  "llm_max_connections": 8,
+  "jev_enabled": true,
+  "jev_base_url": "https://api.commandcode.ai/provider",
+  "jev_model": "typesafe/jev-1.14.0",
+  "jev_timeout_s": 8.0
+}

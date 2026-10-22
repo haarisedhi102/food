@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +11,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent.parent
+# Canonical contract files live in the FoodCore resource bundle so Swift can load them
+# without symlinks. The installed wheel maps that directory to `shared/`.
+_RESOURCE_CONTRACT = ROOT / "mobile/ios/FoodCore/Sources/FoodCore/Resources"
+SHARED_DIR = _RESOURCE_CONTRACT if _RESOURCE_CONTRACT.exists() else ROOT / "shared"
+
+
+def _shared_json(name: str, default):
+    try:
+        return json.loads((SHARED_DIR / name).read_text())
+    except (OSError, ValueError):
+        return default
+
+
+SHARED_CONFIG = _shared_json("config.json", {})
+SHARED_PROMPTS = _shared_json("prompts.json", {})
+SHARED_JEV = _shared_json("jev.json", {})
 
 DATA_DIR = Path(os.getenv("FOOD_DATA_DIR", ROOT / "data"))
 IMPORTS_DIR = DATA_DIR / "imports"
@@ -33,20 +50,39 @@ FALLBACK_MODELS = [
     ).split(",")
     if m.strip()
 ]
-CLASSIFY_WORKERS = int(os.getenv("FOOD_CLASSIFY_WORKERS", "6"))
-RESOLVE_WORKERS = int(os.getenv("FOOD_RESOLVE_WORKERS", "4"))
+CLASSIFY_WORKERS = int(
+    os.getenv("FOOD_CLASSIFY_WORKERS", str(SHARED_CONFIG.get("classify_workers", 6)))
+)
+RESOLVE_WORKERS = int(
+    os.getenv("FOOD_RESOLVE_WORKERS", str(SHARED_CONFIG.get("resolve_workers", 4)))
+)
 # Per-request controls: keep a slow generation from blocking the whole batch.
-LLM_TIMEOUT_S = float(os.getenv("FOOD_LLM_TIMEOUT_S", "120"))
-LLM_MAX_TOKENS = int(os.getenv("FOOD_LLM_MAX_TOKENS", "8192"))
-LLM_MAX_CONNECTIONS = int(os.getenv("FOOD_LLM_MAX_CONNECTIONS", "8"))
+LLM_TIMEOUT_S = float(
+    os.getenv("FOOD_LLM_TIMEOUT_S", str(SHARED_CONFIG.get("llm_timeout_s", 120)))
+)
+LLM_MAX_TOKENS = int(
+    os.getenv("FOOD_LLM_MAX_TOKENS", str(SHARED_CONFIG.get("llm_max_tokens", 8192)))
+)
+LLM_MAX_CONNECTIONS = int(
+    os.getenv("FOOD_LLM_MAX_CONNECTIONS", str(SHARED_CONFIG.get("llm_max_connections", 8)))
+)
 
 # Jev (TypeSafe's typed decision model) for final shelf-life selection. It is only
 # used by the resolver, never by canonicalization. Uses the Command Code provider.
-JEV_ENABLED = os.getenv("FOOD_JEV_ENABLED", "1").lower() in ("1", "true", "yes")
+JEV_ENABLED = os.getenv(
+    "FOOD_JEV_ENABLED", "1" if SHARED_CONFIG.get("jev_enabled", True) else "0"
+).lower() in ("1", "true", "yes")
 # Command Code's System One route; TypeSafeClassifier appends /v1/systemone.
-JEV_BASE_URL = os.getenv("FOOD_JEV_BASE_URL", "https://api.commandcode.ai/provider")
-JEV_MODEL = os.getenv("FOOD_JEV_MODEL", "typesafe/jev-1.14.0")
-JEV_TIMEOUT_S = float(os.getenv("FOOD_JEV_TIMEOUT_S", "8"))
+JEV_BASE_URL = os.getenv(
+    "FOOD_JEV_BASE_URL",
+    SHARED_CONFIG.get("jev_base_url", "https://api.commandcode.ai/provider"),
+)
+JEV_MODEL = os.getenv(
+    "FOOD_JEV_MODEL", SHARED_CONFIG.get("jev_model", "typesafe/jev-1.14.0")
+)
+JEV_TIMEOUT_S = float(
+    os.getenv("FOOD_JEV_TIMEOUT_S", str(SHARED_CONFIG.get("jev_timeout_s", 8)))
+)
 
 # Embeddings (OpenRouter, OpenAI-compatible /embeddings). Defaults to a cheap paid model:
 # the free tier caps at ~20 requests/min, which throttles per-item matching, and the paid

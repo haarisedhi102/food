@@ -8,49 +8,7 @@ import Foundation
 public enum Canonicalize {
     public static let batchSize = 30
 
-    public static let system = """
-    You normalize grocery receipt line items into canonical product records.
-    You will receive items from Costco (heavily abbreviated, e.g. "KS ORG A2 PR") and Kroger
-    (readable, e.g. "Horizon Organic Whole Milk"). Return ONE object per item, keyed by item_key.
-
-    For each item return exactly these fields:
-      item_key (string, echo the input), canonical_name (string),
-      brand (string or null), category (string or null),
-      pkg_size (string or null, e.g. "1/2 gal", "16 oz"),
-      unit ("count" | "weight" | "volume" or null),
-      is_food (bool), is_perishable (bool),
-      storage ("fridge" | "freezer" | "pantry" | "counter"),
-      confidence (0.0-1.0).
-
-    Shelf life is resolved in a later stage — do not estimate it here.
-
-    Rules:
-    - Write canonical_name as the plain, readable product name (expand abbreviations).
-    - Fresh bakery, deli, refrigerated, meat, seafood, produce, dairy and prepared foods are
-      is_perishable=true, even when a shelf-stable version of the product exists (dry pasta and
-      packaged cookies are shelf-stable; fresh bread, naan and refrigerated crusts are not).
-    - Non-perishable items (coffee, rice, canned goods, spices, oil) are is_perishable=false;
-      they do not expire.
-    - Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false,
-      is_perishable=false.
-    - If you are unsure, lower confidence rather than guessing wildly.
-
-    Examples:
-      "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-      "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
-      "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-      "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","confidence":0.6}
-      "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","confidence":0.7}
-      "WW SANDWICH BREAD" -> {"canonical_name":"Whole Wheat Sandwich Bread","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"counter","confidence":0.8}
-      "CAULIFLOWER CRUST" -> {"canonical_name":"Cauliflower Pizza Crusts","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.7}
-      "NAAN DIPPERS"      -> {"canonical_name":"Naan Dippers","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"pantry","confidence":0.75}
-      "ORG ORANGE JUICE"  -> {"canonical_name":"Orange Juice","brand":null,"category":"Beverages","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-      "PACKAGED COOKIES"  -> {"canonical_name":"Packaged Cookies","brand":null,"category":"Snacks","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
-      "JASMINE RICE"      -> {"canonical_name":"Jasmine Rice","brand":null,"category":"Pantry Staples","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
-      "CLOVER HONEY"      -> {"canonical_name":"Honey","brand":null,"category":"Condiments & Sauces","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
-
-    Respond with ONLY JSON: {"items": [ ... ]}
-    """
+    public static let system = SharedContract.prompts["canonicalize"] ?? ""
 
     public struct Stats: Equatable {
         public var batches = 0
@@ -60,6 +18,27 @@ public enum Canonicalize {
         /// Receipt lines still without a product mapping (usually a failed LLM call).
         /// They stay pending and the next `canonicalize` retries them.
         public var pending = 0
+    }
+
+    private struct ProviderBox: @unchecked Sendable {
+        let provider: LLMProvider
+    }
+
+    private struct BatchOutcome: @unchecked Sendable {
+        let index: Int
+        let response: ChatResponse?
+        let error: String?
+    }
+
+    private static func sizedBatches(
+        _ items: [[String: SQLValue]], workers: Int
+    ) -> [[[String: SQLValue]]] {
+        guard !items.isEmpty else { return [] }
+        let target = Int(ceil(Double(items.count) / Double(max(1, workers))))
+        let size = min(batchSize, max(10, target))
+        return stride(from: 0, to: items.count, by: size).map {
+            Array(items[$0 ..< min($0 + size, items.count)])
+        }
     }
 
     /// Distinct items seen on receipts that have no product mapping yet.
@@ -258,6 +237,7 @@ public enum Canonicalize {
                     "name": ci.canonicalName,
                     "category": ci.category.map { $0 as Any } ?? NSNull(),
                     "storage": ci.storage.map { $0 as Any } ?? NSNull(),
+                    "is_perishable": ci.isPerishable,
                 ])
             }
             stats.ok += 1
@@ -271,45 +251,77 @@ public enum Canonicalize {
     /// Shelf life is resolved for the newly stored food items by `ShelfLifeAgent`, as in
     /// `food/canonicalize.py`.
     public static func canonicalize(
-        _ db: Database, provider: LLMProvider, embedModel: String? = nil, limit: Int? = nil,
+        _ db: Database, provider: LLMProvider, embedModel: String? = nil,
+        jev: JevProvider? = nil, limit: Int? = nil,
         progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Stats {
         var stats = Stats()
         let items = try pending(db, limit: limit)
         if items.isEmpty { return stats }
 
-        let batches = stride(from: 0, to: items.count, by: batchSize).map {
-            Array(items[$0 ..< min($0 + batchSize, items.count)])
-        }
+        let workers = max(1, provider.config.classifyWorkers)
+        let batches = sizedBatches(items, workers: workers)
         var failed: [[String: SQLValue]] = []
-        for (index, batch) in batches.enumerated() {
+        let box = ProviderBox(provider: provider)
+        let outcomes: [BatchOutcome] = await withTaskGroup(of: BatchOutcome.self) { group in
+            var collected: [BatchOutcome] = []
+            func submit(_ index: Int) {
+                let batch = batches[index]
+                group.addTask {
+                    do {
+                        let response = try await box.provider.chatJSON(
+                            system: system, user: buildUser(batch), temperature: 0
+                        )
+                        return BatchOutcome(index: index, response: response, error: nil)
+                    } catch {
+                        return BatchOutcome(
+                            index: index, response: nil,
+                            error: String(describing: error)
+                        )
+                    }
+                }
+            }
+            let initial = min(workers, batches.count)
+            for index in 0 ..< initial { submit(index) }
+            var next = initial
+            while let outcome = await group.next() {
+                collected.append(outcome)
+                if next < batches.count {
+                    submit(next)
+                    next += 1
+                }
+            }
+            return collected
+        }
+
+        for outcome in outcomes.sorted(by: { $0.index < $1.index }) {
+            let index = outcome.index
+            let batch = batches[index]
             stats.batches += 1
-            progress?("Classifying products, batch \(index + 1) of \(batches.count)…")
             var stored: [[String: Any]] = []
-            do {
-                let response = try await provider.chatJSON(system: system, user: buildUser(batch), temperature: 0)
+            if let response = outcome.response {
                 record(db, purpose: "canonicalize", model: response.model)
                 let (batchFailed, batchStored) = try apply(
                     db, batch: batch, data: response.json, model: response.model, stats: &stats
                 )
                 failed += batchFailed
                 stored = batchStored
-            } catch {
-                print("[canon] batch \(index + 1)/\(batches.count) failed: \(error)")
+            } else {
+                print("[canon] batch \(index + 1)/\(batches.count) failed: \(outcome.error ?? "?")")
                 failed += batch
             }
             progress?("Resolving shelf life, batch \(index + 1) of \(batches.count)…")
+            let perishable = stored.filter { ($0["is_perishable"] as? Bool) == true }
             let shelf = try await ShelfLifeAgent.resolveBatch(
-                db, items: stored, provider: provider, embedModel: embedModel, progress: progress
+                db, items: perishable, provider: provider, embedModel: embedModel,
+                jev: jev, progress: progress
             )
             stats.resolved += shelf.resolved
         }
 
         if !failed.isEmpty {
             progress?("Retrying \(failed.count) products…")
-            for batch in stride(from: 0, to: failed.count, by: batchSize).map({
-                Array(failed[$0 ..< min($0 + batchSize, failed.count)])
-            }) {
+            for batch in sizedBatches(failed, workers: workers) {
                 var stored: [[String: Any]] = []
                 if let response = try? await provider.chatJSON(system: system, user: buildUser(batch), temperature: 0) {
                     record(db, purpose: "canonicalize", model: response.model)
@@ -327,9 +339,10 @@ public enum Canonicalize {
                     // permanently caching raw receipt text as the product name.
                     print("[canon] retry call failed; leaving \(batch.count) products pending")
                 }
+                let perishable = stored.filter { ($0["is_perishable"] as? Bool) == true }
                 let shelf = try await ShelfLifeAgent.resolveBatch(
-                    db, items: stored, provider: provider, embedModel: embedModel,
-                    progress: progress
+                    db, items: perishable, provider: provider, embedModel: embedModel,
+                    jev: jev, progress: progress
                 )
                 stats.resolved += shelf.resolved
             }

@@ -28,14 +28,16 @@ public enum Sync {
             : Normalizer.normalizeKroger(payload)
         progress?("Saving \(receipts.count) receipts…")
         let (newR, newI) = try Store.store(db, retailer: retailer, receipts: receipts)
+        let jev: JevProvider? = provider.config.jevEnabled && !provider.config.apiKey.isEmpty
+            ? JevClient(config: provider.config) : nil
         // classify = canonicalize (which also resolves shelf life for the new food items)
         let stats = try await Canonicalize.canonicalize(
-            db, provider: provider, embedModel: embedModel, progress: progress
+            db, provider: provider, embedModel: embedModel, jev: jev, progress: progress
         )
         // A shelf-life chunk can fail while classification succeeds. Backfill any perishable
         // product still missing an expiry, so those items don't sit at "no expiry" forever.
         let backfill = try await ShelfLifeAgent.resolveMissing(
-            db, provider: provider, embedModel: embedModel, progress: progress
+            db, provider: provider, embedModel: embedModel, jev: jev, progress: progress
         )
         progress?("Building your kitchen…")
         let inv = try Inventory.build(db)

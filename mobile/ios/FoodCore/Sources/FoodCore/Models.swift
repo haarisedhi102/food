@@ -36,19 +36,23 @@ public struct NormalizedReceipt: Equatable {
     public var store: String?
     public var totalCents: Int?
     public var items: [NormalizedItem]
+    /// Original retailer receipt object, serialized for archive/replay parity with Python.
+    public var rawJSON: String?
 
     public init(
         externalID: String,
         purchasedOn: String? = nil,
         store: String? = nil,
         totalCents: Int? = nil,
-        items: [NormalizedItem] = []
+        items: [NormalizedItem] = [],
+        rawJSON: String? = nil
     ) {
         self.externalID = externalID
         self.purchasedOn = purchasedOn
         self.store = store
         self.totalCents = totalCents
         self.items = items
+        self.rawJSON = rawJSON
     }
 }
 

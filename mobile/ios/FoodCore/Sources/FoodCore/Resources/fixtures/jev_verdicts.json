@@ -1,0 +1,182 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "Milk",
+      "category": "Dairy Products & Eggs",
+      "storage": "fridge"
+    },
+    {
+      "id": 2,
+      "name": "Bananas",
+      "category": "Produce",
+      "storage": "counter"
+    },
+    {
+      "id": 3,
+      "name": "Eggs",
+      "category": "Dairy Products & Eggs",
+      "storage": "fridge"
+    },
+    {
+      "id": 4,
+      "name": "Baby Food Pouches",
+      "category": "Pantry",
+      "storage": "pantry"
+    }
+  ],
+  "shortlists": {
+    "1": [
+      {
+        "name": "Milk",
+        "subtitle": "plain or flavored",
+        "pantry_days": null,
+        "refrigerate_days": null,
+        "freezer_days": 90,
+        "after_opening_days": null
+      }
+    ],
+    "2": [
+      {
+        "name": "Bananas",
+        "subtitle": null,
+        "pantry_days": null,
+        "refrigerate_days": null,
+        "freezer_days": null,
+        "after_opening_days": null
+      }
+    ],
+    "3": [
+      {
+        "name": "Eggs",
+        "subtitle": "in shell",
+        "pantry_days": null,
+        "refrigerate_days": 21,
+        "freezer_days": null,
+        "after_opening_days": null
+      }
+    ],
+    "4": [
+      {
+        "name": "Jars or pouches",
+        "subtitle": null,
+        "pantry_days": null,
+        "refrigerate_days": null,
+        "freezer_days": null,
+        "after_opening_days": 2
+      }
+    ]
+  },
+  "answers": {
+    "item_1_perishable": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "item_1_storage": {
+      "type": "choice",
+      "choice": "fridge",
+      "confidence": 1.0
+    },
+    "item_1_days": {
+      "type": "choice",
+      "choice": "d5_7",
+      "confidence": 1.0
+    },
+    "item_1_candidate": {
+      "type": "choice",
+      "choice": "c0",
+      "confidence": 0.6
+    },
+    "item_2_perishable": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "item_2_storage": {
+      "type": "choice",
+      "choice": "counter",
+      "confidence": 1.0
+    },
+    "item_2_days": {
+      "type": "choice",
+      "choice": "d5_7",
+      "confidence": 0.84
+    },
+    "item_2_candidate": {
+      "type": "choice",
+      "choice": "c0",
+      "confidence": 0.87
+    },
+    "item_3_perishable": {
+      "type": "noul",
+      "noul": 0.95
+    },
+    "item_3_storage": {
+      "type": "choice",
+      "choice": "fridge",
+      "confidence": 1.0
+    },
+    "item_3_days": {
+      "type": "choice",
+      "choice": "d15_30",
+      "confidence": 1.0
+    },
+    "item_3_candidate": {
+      "type": "choice",
+      "choice": "c0",
+      "confidence": 0.98
+    },
+    "item_4_perishable": {
+      "type": "noul",
+      "noul": 0.78
+    },
+    "item_4_storage": {
+      "type": "choice",
+      "choice": "pantry",
+      "confidence": 0.99
+    },
+    "item_4_days": {
+      "type": "choice",
+      "choice": "d181_365",
+      "confidence": 0.46
+    },
+    "item_4_candidate": {
+      "type": "choice",
+      "choice": "c0",
+      "confidence": 0.42
+    }
+  },
+  "expected": {
+    "1": {
+      "source": "jev",
+      "shelf_life_days": 7,
+      "shelf_life_days_opened": null,
+      "storage": "fridge",
+      "is_perishable": true,
+      "confidence": 0.97
+    },
+    "2": {
+      "source": "jev",
+      "shelf_life_days": 7,
+      "shelf_life_days_opened": null,
+      "storage": "counter",
+      "is_perishable": true,
+      "confidence": 0.84
+    },
+    "3": {
+      "source": "foodkeeper",
+      "shelf_life_days": 21,
+      "shelf_life_days_opened": null,
+      "storage": "fridge",
+      "is_perishable": true,
+      "confidence": 0.95
+    },
+    "4": {
+      "source": "jev",
+      "shelf_life_days": null,
+      "shelf_life_days_opened": null,
+      "storage": "pantry",
+      "is_perishable": true,
+      "confidence": 0.46
+    }
+  }
+}

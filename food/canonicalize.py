@@ -28,47 +28,7 @@ BATCH_SIZE = 30
 # When there are fewer full batches than workers, split them so the provider concurrency
 # is actually used. 10 was the best split in the benchmark (3x10 beat 1x30 and 6x5).
 MIN_BATCH_SIZE = 10
-SYSTEM = """You normalize grocery receipt line items into canonical product records.
-You will receive items from Costco (heavily abbreviated, e.g. "KS ORG A2 PR") and Kroger
-(readable, e.g. "Horizon Organic Whole Milk"). Return ONE object per item, keyed by item_key.
-
-For each item return exactly these fields:
-  item_key (string, echo the input), canonical_name (string),
-  brand (string or null), category (string or null),
-  pkg_size (string or null, e.g. "1/2 gal", "16 oz"),
-  unit ("count" | "weight" | "volume" or null),
-  is_food (bool), is_perishable (bool),
-  storage ("fridge" | "freezer" | "pantry" | "counter"),
-  confidence (0.0-1.0).
-
-Shelf life is resolved in a later stage — do not estimate it here.
-
-Rules:
-- Write canonical_name as the plain, readable product name (expand abbreviations).
-- Fresh bakery, deli, refrigerated, meat, seafood, produce, dairy and prepared foods are
-  is_perishable=true, even when a shelf-stable version of the product exists (dry pasta and
-  packaged cookies are shelf-stable; fresh bread, naan and refrigerated crusts are not).
-- Non-perishable items (coffee, rice, canned goods, spices, oil) are is_perishable=false;
-  they do not expire.
-- Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false,
-  is_perishable=false.
-- If you are unsure, lower confidence rather than guessing wildly.
-
-Examples:
-  "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-  "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
-  "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-  "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","confidence":0.6}
-  "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","confidence":0.7}
-  "WW SANDWICH BREAD" -> {"canonical_name":"Whole Wheat Sandwich Bread","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"counter","confidence":0.8}
-  "CAULIFLOWER CRUST" -> {"canonical_name":"Cauliflower Pizza Crusts","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.7}
-  "NAAN DIPPERS"      -> {"canonical_name":"Naan Dippers","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"pantry","confidence":0.75}
-  "ORG ORANGE JUICE"  -> {"canonical_name":"Orange Juice","brand":null,"category":"Beverages","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
-  "PACKAGED COOKIES"  -> {"canonical_name":"Packaged Cookies","brand":null,"category":"Snacks","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
-  "JASMINE RICE"      -> {"canonical_name":"Jasmine Rice","brand":null,"category":"Pantry Staples","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
-  "CLOVER HONEY"      -> {"canonical_name":"Honey","brand":null,"category":"Condiments & Sauces","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
-
-Respond with ONLY JSON: {"items": [ ... ]}"""
+SYSTEM = config.SHARED_PROMPTS["canonicalize"]
 
 
 def pending(conn: sqlite3.Connection, limit: int | None = None) -> list[dict]:

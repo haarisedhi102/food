@@ -49,9 +49,12 @@ struct CLI {
 
         case "canonicalize":
             let db = try openDB(opts)
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let config = providerConfig(opts)
+            let provider = MacPawProvider(config: config)
+            let jev = config.jevEnabled && !config.apiKey.isEmpty ? JevClient(config: config) : nil
             let stats = try await Canonicalize.canonicalize(
-                db, provider: provider, embedModel: embedModel(opts, provider), limit: opts.int("limit")
+                db, provider: provider, embedModel: embedModel(opts, provider),
+                jev: jev, limit: opts.int("limit")
             )
             print("canonicalized batches=\(stats.batches) ok=\(stats.ok) fallback=\(stats.fallback) "
                 + "resolved=\(stats.resolved)")
@@ -82,10 +85,12 @@ struct CLI {
 
         case "resolve":
             let db = try openDB(opts)
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let config = providerConfig(opts)
+            let provider = MacPawProvider(config: config)
+            let jev = config.jevEnabled && !config.apiKey.isEmpty ? JevClient(config: config) : nil
             let stats = try await ShelfLifeAgent.resolveMissing(
                 db, provider: provider, limit: opts.int("limit"),
-                embedModel: embedModel(opts, provider)
+                embedModel: embedModel(opts, provider), jev: jev
             )
             print("resolved=\(stats.resolved) unresolved=\(stats.unresolved) errors=\(stats.errors)")
 

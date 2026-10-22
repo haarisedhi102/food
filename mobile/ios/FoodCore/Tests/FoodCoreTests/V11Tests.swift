@@ -31,6 +31,14 @@ final class Recorder: @unchecked Sendable {
     var queries: [String] = []
 }
 
+final class FakeJev: JevProvider, @unchecked Sendable {
+    let response: JevResponse
+    init(response: JevResponse) { self.response = response }
+    func decide(state: [String: Any], questions: [String: Any]) async throws -> JevResponse {
+        response
+    }
+}
+
 final class V11Tests: XCTestCase {
     private func db() throws -> Database {
         let d = try Database.inMemory()
@@ -83,6 +91,41 @@ final class V11Tests: XCTestCase {
         let product = try d.query("SELECT shelf_life_days, shelf_life_source FROM products").first
         XCTAssertEqual(product?["shelf_life_days"]?.intValue, 7)
         XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "web")
+    }
+
+    func testResolverEndsAtJevWithoutLlmSynthesis() async throws {
+        let d = try db()
+        let pid = try seedProduct(d, name: "Milk")
+        let notes = ChatCompletion(content: "Milk: 7 days in the fridge.", toolCalls: [], model: "fake")
+        let provider = ScriptedProvider(completions: [notes])
+
+        let answer = { (type: String, noul: Double?, choice: String?, confidence: Double?) in
+            JevAnswer(
+                type: type, noul: noul, choice: choice, confidence: confidence,
+                probabilities: nil, score: nil
+            )
+        }
+        let response = JevResponse(
+            model: "fake-jev",
+            answers: [
+                "item_\(pid)_perishable": answer("noul", 0.97, nil, nil),
+                "item_\(pid)_storage": answer("choice", nil, "fridge", 1.0),
+                "item_\(pid)_days": answer("choice", nil, "d5_7", 1.0),
+                "item_\(pid)_candidate": answer("choice", nil, "none", 0.9),
+            ],
+            usage: nil,
+            requestID: nil
+        )
+
+        let stats = try await ShelfLifeAgent.resolveMissing(
+            d, provider: provider, jev: FakeJev(response: response), search: { _ in "" }
+        )
+
+        XCTAssertEqual(stats.resolved, 1)
+        XCTAssertEqual(provider.chatCalls, 1)  // research only; no synthesis call
+        let product = try d.query("SELECT shelf_life_days, shelf_life_source FROM products").first
+        XCTAssertEqual(product?["shelf_life_days"]?.intValue, 7)
+        XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "jev")
     }
 
     func testResolveMissingWritesShelfLifeAndInventoryExpiry() async throws {
