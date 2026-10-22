@@ -115,28 +115,47 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
 
     // MARK: - Receipt fetch (inside the browser engine)
 
-    /// Fetch the full raw receipt payload through the web view. The result is byte-compatible
-    /// with `food import <file> --retailer kroger|costco`.
-    func fetchReceipts() async -> (summary: String, json: String) {
+    /// Fetch the raw receipt payload through the web view. The result is byte-compatible with
+    /// `food import <file> --retailer kroger|costco`.
+    ///
+    /// Repeat syncs are incremental. `knownKeys` are the receipts already in the database, so
+    /// Kroger skips itemizing them; `since` (the newest stored purchase date, YYYY-MM-DD)
+    /// narrows Costco's date-range query. An empty watermark is the first sync and keeps the
+    /// old full-window behaviour.
+    ///
+    /// Kroger still pages the full search list: it is small, and stopping early would assume
+    /// the results are strictly newest-first — a late-posted receipt could then be skipped.
+    /// Python's `kroger.pull` pages fully and filters by `skip_keys` the same way.
+    func fetchReceipts(
+        knownKeys: Set<String> = [], since: String? = nil
+    ) async -> (summary: String, json: String, ok: Bool) {
         switch retailer {
-        case .kroger: return await fetchKroger()
-        case .costco: return await fetchCostco()
+        case .kroger: return await fetchKroger(knownKeys: knownKeys)
+        case .costco: return await fetchCostco(since: since)
         }
     }
 
-    private func fetchKroger() async -> (summary: String, json: String) {
+    private func fetchKroger(knownKeys: Set<String>) async -> (summary: String, json: String, ok: Bool) {
         // 1. page the search once, on a freshly-armed page
         await navigate(to: fetchPageURL)
         try? await Task.sleep(nanoseconds: 2_500_000_000)
         guard let sraw = await runScript(Self.krogerSearchScript),
               let search = decodeJSON(sraw)["search"] as? [[String: Any]] else {
-            return ("search failed", "{}")
+            return ("search failed", "{}", false)
         }
-        let keys = search.compactMap { row -> String? in
+        let groceryKeys = search.compactMap { row -> String? in
             guard let key = row["receiptKey"] as? String,
                   let type = row["purchaseType"] as? String,
                   Self.receiptTypes.contains(type) else { return nil }
             return key
+        }
+        let keys = groceryKeys.filter { !knownKeys.contains($0) }
+
+        // Nothing new: skip the details calls (and their page reloads) entirely.
+        if keys.isEmpty {
+            let payload: [String: Any] = ["search": search, "details": [String: Any]()]
+            let summary = "search=\(search.count) keys=\(groceryKeys.count) new=0 (up to date)"
+            return (summary, encodeJSON(payload) ?? "{}", true)
         }
 
         // 2. itemize in chunks, reloading the page between them to re-arm the sensor
@@ -166,25 +185,54 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
         let payload: [String: Any] = ["search": search, "details": details]
         let pjson = encodeJSON(payload) ?? "{}"
         return (
-            "search=\(search.count) keys=\(keys.count) loads=\(loads) detailsOk=\(ok) errors=\(errors) retries=\(retries)",
-            pjson
+            "search=\(search.count) keys=\(groceryKeys.count) new=\(keys.count) "
+                + "loads=\(loads) detailsOk=\(ok) errors=\(errors) retries=\(retries)",
+            pjson,
+            true
         )
     }
 
-    private func fetchCostco() async -> (summary: String, json: String) {
-        await navigate(to: fetchPageURL)
-        try? await Task.sleep(nanoseconds: 2_500_000_000)
-        guard let raw = await runScript(Self.costcoScript),
-              let obj = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any] else {
-            return ("costco fetch failed", "{}")
+    private func fetchCostco(since: String?) async -> (summary: String, json: String, ok: Bool) {
+        // A Costco idToken lives ~12 minutes; the orders-page SPA mints a new one from its
+        // refresh token on load. Reload and retry if the token is stale or the API 401s.
+        var lastSummary = "costco fetch failed"
+        var lastPayload = "{}"
+        for attempt in 1...2 {
+            await navigate(to: fetchPageURL)
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            // The script polls for a *valid* (non-expired) idToken, not just a present one.
+            guard let raw = await runScript(
+                Self.costcoScript, arguments: ["since": since ?? ""], timeout: .seconds(60)
+            ),
+                  let obj = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any] else {
+                print("[fetch] costco attempt \(attempt) failed")
+                try? await Task.sleep(for: .seconds(2))
+                continue
+            }
+            let counts = (obj["counts"] as? [String: Any]) ?? [:]
+            let summary = counts.keys.sorted()
+                .map { "\($0)=\(counts[$0] ?? "?")" }.joined(separator: "  ")
+            let pjson = encodeJSON(obj["payload"] ?? [:]) ?? "{}"
+            lastSummary = summary
+            lastPayload = pjson
+            let status = (counts["status"] as? Int) ?? 0
+            let error = counts["error"] as? String
+            if status == 200 && error == nil {
+                return (summary, pjson, true)
+            }
+            if status == 401 || error != nil {
+                print("[fetch] costco session expired (attempt \(attempt)); reloading")
+                try? await Task.sleep(for: .seconds(2))
+                continue
+            }
+            // 403/429/other: retrying would make a WAF block worse.
+            return (summary, pjson, false)
         }
-        let counts = (obj["counts"] as? [String: Any]) ?? [:]
-        let summary = counts.keys.sorted().map { "\($0)=\(counts[$0] ?? "?")" }.joined(separator: "  ")
-        let pjson = encodeJSON(obj["payload"] ?? [:]) ?? "{}"
-        return (summary, pjson)
+        return (lastSummary, lastPayload, false)
     }
 
-    /// Page the purchase-history search — mirroring `kroger.pull`.
+    /// Page the purchase-history search — mirroring `kroger.pull`. Pages fully; the caller
+    /// filters out receipts it already has before itemizing.
     private static let krogerSearchScript = """
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const H = {'X-Kroger-Channel':'WEB','Accept':'application/json'};
@@ -243,19 +291,48 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
     /// Reproduce `costco.pull`'s GraphQL call inside the page.
     private static let costcoScript = """
     try {
-      const idToken = localStorage.getItem('idToken');
-      if (!idToken) return JSON.stringify({counts:{error:'no idToken in localStorage'}, payload:{}});
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const valid = (t) => {
+        if (!t) return false;
+        try {
+          const p = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+          const c = JSON.parse(atob(p));
+          return !c.exp || c.exp * 1000 > Date.now();
+        } catch (e) { return false; }
+      };
+      // The orders-page SPA refreshes the short-lived token after hydration. Poll for a
+      // *valid* one; a present but expired token would make the GraphQL call 401.
+      let idToken = null;
+      for (let i = 0; i < 60; i++) {
+        const t = localStorage.getItem('idToken');
+        if (valid(t)) { idToken = t; break; }
+        await sleep(500);
+      }
+      if (!idToken) return JSON.stringify({counts:{error:'no valid idToken in localStorage'}, payload:{}});
       const pad = (n) => String(n);
       const end = new Date();
-      const start = new Date(end.getTime() - 90*864e5);
+      const floor = new Date(end.getTime() - 90*864e5);
+      // Incremental: start from the newest stored receipt, with a 2-day overlap so a receipt
+      // that posts late still gets picked up. The first sync uses the full 90-day window.
+      let start = floor;
+      if (since) {
+        const s = new Date(since + 'T00:00:00');
+        if (!isNaN(s.getTime())) {
+          const overlap = new Date(s.getTime() - 2*864e5);
+          if (overlap > floor) start = overlap;
+        }
+      }
+      if (start > end) start = end;
       const fmt = (d) => `${pad(d.getMonth()+1)}/${pad(d.getDate())}/${d.getFullYear()}`;
       const query = `query receiptsWithCounts($startDate: String!, $endDate: String!, $documentType: String!, $documentSubType: String!) {
         receiptsWithCounts(startDate: $startDate, endDate: $endDate, documentType: $documentType, documentSubType: $documentSubType) {
           receipts { transactionBarcode transactionDateTime warehouseName total itemArray { itemNumber itemDescription01 unit amount itemUnitPriceAmount } }
         }
       }`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25000);
       const r = await fetch('https://ecom-api.costco.com/ebusiness/order/v1/orders/graphql', {
-        method:'POST', credentials:'include',
+        method:'POST', credentials:'include', signal: ctrl.signal,
         headers:{'Content-Type':'application/json-patch+json','Accept':'*/*',
                  'costco-x-authorization':'Bearer '+idToken,
                  'costco-x-wcs-clientid':'4900eb1f-0c10-4bd9-99c3-c59e6c1ecebf',
@@ -263,10 +340,11 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
                  'costco.env':'ecom','costco.service':'restOrders'},
         body: JSON.stringify({query, variables:{startDate:fmt(start), endDate:fmt(end),
                                                 documentType:'warehouse', documentSubType:'all'}})});
+      clearTimeout(timer);
       const text = await r.text();
       let json = null; try { json = JSON.parse(text); } catch (e) {}
       const receipts = ((((json||{}).data||{}).receiptsWithCounts||{}).receipts)||[];
-      return JSON.stringify({counts:{status: r.status, receipts: receipts.length}, payload: json || {status: r.status, text}});
+      return JSON.stringify({counts:{status: r.status, receipts: receipts.length, since: fmt(start)}, payload: json || {status: r.status, text}});
     } catch (e) {
       return JSON.stringify({counts:{error: String(e)}, payload:{}});
     }
@@ -274,10 +352,35 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
 
     // MARK: - Script + navigation plumbing
 
-    private func runScript(_ script: String, arguments: [String: Any] = [:]) async -> String? {
-        (try? await webView.callAsyncJavaScript(
-            script, arguments: arguments, in: nil, contentWorld: .page
-        )) as? String
+    /// Run page JavaScript, but never wait forever: an in-page `fetch` can stall behind
+    /// Akamai, and `callAsyncJavaScript` has no timeout of its own.
+    private func runScript(
+        _ script: String, arguments: [String: Any] = [:], timeout: Duration = .seconds(35)
+    ) async -> String? {
+        // A task group would wait for the stubborn call to finish too, defeating the
+        // deadline; the first of the two paths to claim the continuation wins.
+        let once = Once()
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                let value: String?
+                do {
+                    value = try await webView.callAsyncJavaScript(
+                        script, arguments: arguments, in: nil, contentWorld: .page
+                    ) as? String
+                } catch {
+                    print("[web] script failed: \(error)")
+                    value = nil
+                }
+                if await once.claim() { continuation.resume(returning: value) }
+            }
+            Task {
+                try? await Task.sleep(for: timeout)
+                if await once.claim() {
+                    print("[web] script timed out after \(timeout)")
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
     }
 
     private func decodeJSON(_ raw: String) -> [String: Any] {
@@ -303,6 +406,37 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task { @MainActor in finishNavigation() }
+    }
+
+    /// WebKit's internal `_WKNavigationActionPolicyAllowWithoutTryingAppLink`
+    /// (`WKNavigationActionPolicyAllow + 2`). A plain `.allow` still hands an associated
+    /// domain to the installed native app, and `.cancel` doesn't prevent that hand-off
+    /// either — WebKit tries the universal link before our decision matters. This policy
+    /// is the only way to keep `costco.com` inside the web view. The value has been stable
+    /// since iOS 9 and is what embedded browsers use.
+    private static let allowWithoutAppLink =
+        WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2)!
+
+    /// Keep OAuth/login flows inside the web view. Costco (and sometimes Kroger) try to hand
+    /// off to their native app two ways: a custom scheme (`costco://…`), and a *universal link*
+    /// — a plain `https://…costco.com/…` URL that iOS routes to the installed native app. Both
+    /// lose the authenticated session the in-page fetch depends on, so both must stay here.
+    nonisolated func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        // WebKit delivers navigation decisions on the main thread, so the main-actor
+        // state this delegate touches is safe to read here.
+        MainActor.assumeIsolated {
+            let scheme = navigationAction.request.url?.scheme?.lowercased() ?? ""
+            let webSchemes: Set<String> = ["http", "https", "about", "data", "blob"]
+            guard webSchemes.contains(scheme) else {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(Self.allowWithoutAppLink)
+        }
     }
 
     nonisolated func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -344,6 +478,16 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
 
     private func js(_ script: String) async -> Any? {
         try? await webView.evaluateJavaScript(script)
+    }
+}
+
+/// Lets the first of several racing tasks claim a continuation exactly once.
+private actor Once {
+    private var claimed = false
+    func claim() -> Bool {
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }
 

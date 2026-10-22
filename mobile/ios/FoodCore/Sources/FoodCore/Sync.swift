@@ -9,6 +9,8 @@ public enum Sync {
         public var inventory = 0
         public var canonicalized = Canonicalize.Stats()
         public var shelfLife = ShelfLifeAgent.Stats()
+        /// Receipt lines still unmapped; the next sync retries them.
+        public var pending = 0
     }
 
     @discardableResult
@@ -17,15 +19,25 @@ public enum Sync {
         retailer: String,
         payload: Any,
         provider: LLMProvider,
-        embedModel: String? = nil
+        embedModel: String? = nil,
+        progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Summary {
+        progress?("Reading receipts…")
         let receipts = retailer == "costco"
             ? Normalizer.normalizeCostco(payload)
             : Normalizer.normalizeKroger(payload)
+        progress?("Saving \(receipts.count) receipts…")
         let (newR, newI) = try Store.store(db, retailer: retailer, receipts: receipts)
-        // classify = canonicalize, then ground any remaining perishable shelf life (as in cli.py)
-        let stats = try await Canonicalize.canonicalize(db, provider: provider, embedModel: embedModel)
-        let shelf = try await ShelfLifeAgent.resolveMissing(db, provider: provider)
+        // classify = canonicalize (which also resolves shelf life for the new food items)
+        let stats = try await Canonicalize.canonicalize(
+            db, provider: provider, embedModel: embedModel, progress: progress
+        )
+        // A shelf-life chunk can fail while classification succeeds. Backfill any perishable
+        // product still missing an expiry, so those items don't sit at "no expiry" forever.
+        let backfill = try await ShelfLifeAgent.resolveMissing(
+            db, provider: provider, embedModel: embedModel, progress: progress
+        )
+        progress?("Building your kitchen…")
         let inv = try Inventory.build(db)
         _ = try Inventory.refreshStatus(db)
 
@@ -34,7 +46,8 @@ public enum Sync {
         summary.newItems = newI
         summary.inventory = inv
         summary.canonicalized = stats
-        summary.shelfLife = shelf
+        summary.shelfLife.resolved = stats.resolved + backfill.resolved
+        summary.pending = stats.pending
         return summary
     }
 }

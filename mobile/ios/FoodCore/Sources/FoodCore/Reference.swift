@@ -188,28 +188,17 @@ public enum Reference {
         return fused.compactMap { byID[$0] }
     }
 
-    // MARK: - LLM rerank (match_batch)
+    // MARK: - FoodKeeper shortlists
 
-    public static let matchSystem = """
-    You map grocery items to the single best FoodKeeper reference row.
-    For each item you receive a readable name and a shortlist of FoodKeeper candidates
-    (id + name). Pick the id whose row best matches the item, or null if none fit.
-    Respond with ONLY JSON: {"picks": {"<item name>": <id or null>}}
-    """
-
-    /// Ground a batch of canonical names: hybrid retrieval gives each a shortlist, one LLM call
-    /// picks the final row. Returns {name: foodkeeper_id | None}.
-    ///
-    /// Embeddings are fetched in **one** call for the whole batch (one-per-name was ~30 calls
-    /// per batch and made a full history take tens of minutes). Lexical tokens for the corpus
-    /// are computed once, not per name.
-    public static func matchBatch(
+    /// FoodKeeper shortlists for a batch of names, keyed by name. Query embeddings are fetched
+    /// in one call, mirroring Python's `_shortlists` / `_query_vectors`.
+    public static func shortlists(
         _ db: Database,
         names: [String],
-        provider: LLMProvider,
-        model: String? = nil,
-        topn: Int = 5
-    ) async throws -> [String: Int?] {
+        limit: Int,
+        provider: LLMProvider? = nil,
+        model: String? = nil
+    ) async throws -> [String: [[String: SQLValue]]] {
         var uniq: [String] = []
         for n in names where !n.isEmpty && !uniq.contains(n) { uniq.append(n) }
         if uniq.isEmpty { return [:] }
@@ -227,7 +216,7 @@ public enum Reference {
 
         var queryVectors: [String: [Float]] = [:]
         var storedEmbeddings: [(id: Int, vector: [Float])] = []
-        if let model = model {
+        if let provider = provider, let model = model {
             let has = (try? db.query(
                 "SELECT 1 FROM shelf_life_embedding WHERE model = ? LIMIT 1", [.text(model)]
             )) ?? []
@@ -256,59 +245,23 @@ public enum Reference {
                 }
             }
             scored.sort { $0.score != $1.score ? $0.score > $1.score : $0.id < $1.id }
-            let lexicalIDs = scored.prefix(topn * 2).map { $0.id }
+            let lexicalIDs = scored.prefix(limit * 2).map { $0.id }
 
             var vectorIDs: [Int] = []
             if let queryVector = queryVectors[name], !storedEmbeddings.isEmpty {
                 vectorIDs = storedEmbeddings
                     .map { ($0.id, cosine(queryVector, $0.vector)) }
                     .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }
-                    .prefix(topn * 2)
+                    .prefix(limit * 2)
                     .map { $0.0 }
             }
 
             let fused = vectorIDs.isEmpty
                 ? lexicalIDs
                 : reciprocalRankFusion([lexicalIDs, vectorIDs], weights: [0.5, 0.5])
-            candidates[name] = fused.prefix(topn).compactMap { byID[$0] }
+            candidates[name] = fused.prefix(limit).compactMap { byID[$0] }
         }
-
-        if candidates.values.allSatisfy({ $0.isEmpty }) {
-            return Dictionary(uniqueKeysWithValues: uniq.map { ($0, nil) })
-        }
-
-        let payload = uniq.map { name -> [String: Any] in
-            [
-                "item": name,
-                "candidates": (candidates[name] ?? []).map {
-                    ["id": $0["foodkeeper_id"]?.intValue ?? 0, "name": $0["name"]?.stringValue ?? ""]
-                },
-            ]
-        }
-        var picks: [String: Any] = [:]
-        if let data = try? await provider.chatJSON(
-            system: matchSystem,
-            user: jsonString(["items": payload]),
-            temperature: 0
-        ) {
-            picks = (data.json["picks"] as? [String: Any]) ?? [:]
-        }
-
-        var out: [String: Int?] = [:]
-        for name in uniq {
-            let candidateIDs = (candidates[name] ?? []).compactMap { $0["foodkeeper_id"]?.intValue }
-            var pick: Int?
-            if let raw = picks[name] {
-                if let n = raw as? Int { pick = n }
-                else if let s = raw as? String, let n = Int(s.trimmingCharacters(in: .whitespaces)) { pick = n }
-            }
-            if let p = pick, candidateIDs.contains(p) {
-                out[name] = p
-            } else {
-                out[name] = candidateIDs.first
-            }
-        }
-        return out
+        return candidates
     }
 
     // MARK: - Helpers

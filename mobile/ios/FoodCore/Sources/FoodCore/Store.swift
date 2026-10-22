@@ -60,4 +60,24 @@ public enum Store {
         }
         return (newReceipts, newItems)
     }
+
+    /// The `external_id`s already stored for a retailer. The browser fetch passes these in so
+    /// it can stop paging and itemize only receipts it has not seen.
+    public static func knownExternalIDs(_ db: Database, retailer: String) throws -> Set<String> {
+        let rows = try db.query(
+            "SELECT external_id FROM receipts WHERE retailer = ?",
+            [.text(retailer)]
+        )
+        return Set(rows.compactMap { $0["external_id"]?.stringValue })
+    }
+
+    /// The newest purchase date stored for a retailer (YYYY-MM-DD). A date-range fetch (Costco)
+    /// starts from here instead of pulling the whole window again.
+    public static func latestPurchaseDate(_ db: Database, retailer: String) throws -> String? {
+        let rows = try db.query(
+            "SELECT MAX(purchased_on) AS latest FROM receipts WHERE retailer = ?",
+            [.text(retailer)]
+        )
+        return rows.first?["latest"]?.stringValue
+    }
 }

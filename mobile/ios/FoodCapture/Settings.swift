@@ -11,7 +11,11 @@ enum Settings {
     private static let embedModelKey = "embedModel"
 
     static func providerConfig() -> ProviderConfig {
-        var config = ProviderConfig.fromEnvironment()
+        // A gitignored Secrets.env is copied into the bundle by the build (project.yml), so a
+        // device build gets its keys without anything in the repo. Precedence: values saved in
+        // Settings (UserDefaults) > process env > Secrets.env > built-in defaults.
+        let secrets = Bundle.main.url(forResource: "Secrets", withExtension: "env")
+        var config = ProviderConfig.fromEnvironment(envFile: secrets)
         let defaults = UserDefaults.standard
         if let v = defaults.string(forKey: apiKeyKey), !v.isEmpty { config.apiKey = v }
         if let v = defaults.string(forKey: baseURLKey), !v.isEmpty { config.baseURL = v }

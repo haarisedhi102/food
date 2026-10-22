@@ -98,6 +98,10 @@ public protocol LLMProvider {
     func chatJSON(system: String, user: String, temperature: Double) async throws -> ChatResponse
     func embed(_ texts: [String]) async throws -> [[Float]]
     func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion
+    /// Same as `chat`, optionally forcing one tool by name (the provider's `tool_choice`).
+    func chat(
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
+    ) async throws -> ChatCompletion
     func chatText(system: String, user: String, temperature: Double) async throws -> String
 }
 
@@ -105,6 +109,12 @@ public extension LLMProvider {
     // Defaults keep the plain (non-agent) test doubles small.
     func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion {
         throw LLMError.notConfigured("this provider does not support tool-calling chat")
+    }
+
+    func chat(
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
+    ) async throws -> ChatCompletion {
+        try await chat(messages: messages, tools: tools, temperature: temperature)
     }
 
     func chatText(system: String, user: String, temperature: Double) async throws -> String {

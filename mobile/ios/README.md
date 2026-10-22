@@ -41,12 +41,20 @@ The fix is not more retries — it's **re-arming the page**: itemize one batch, 
 a full run is clean:
 
 ```
-search=157 keys=123 loads=13 detailsOk=13 errors=0 retries=0
+search=157 keys=123 new=123 loads=13 detailsOk=13 errors=0 retries=0
 → food import kroger-raw.json --retailer kroger
 → kroger: 123 receipts, 123 new, 1026 new items
 ```
 
 `receiptsPerLoad` / `attempts` in `WebModel.swift` tune the chunk size and retry budget.
+
+Repeat syncs are incremental. The app reads the `external_id`s already in its database and
+passes them to the fetch, so Kroger itemizes only receipts it has not seen — with nothing new,
+it skips the details calls and their page reloads entirely. (It still pages the small search
+list rather than stopping early, matching Python's `skip_keys` behaviour and avoiding any
+assumption about result ordering.) Costco's GraphQL window starts from the newest stored
+purchase date (with a 2-day overlap for late-posted receipts) instead of pulling the full 90
+days again. The first sync still fetches the whole history.
 
 ## The app
 
@@ -78,8 +86,17 @@ The web dashboard (`food/web/`) mirrors this: the same relative-date phrasing (`
 name/brand/category search (`/?q=` ↔ the `.searchable` field). Keep the two in step when you
 change either.
 
-`project.yml` signs with `DEVELOPMENT_TEAM: 4XANTCF7HL` (automatic), so physical-device runs
+`project.yml` signs with `DEVELOPMENT_TEAM: 6H5AQ9JDNV` (automatic), so physical-device runs
 work: an unsigned device build fails to launch. The simulator ignores signing either way.
+
+### Keys on a device
+
+A device build can't read your shell environment or the repo's `.env`. Put the provider
+settings in `mobile/ios/Secrets.env` (gitignored — copy `Secrets.env.example` to start); Debug
+builds copy it into the app bundle (Release/archive builds deliberately do not, so keys can't
+leak in an `.ipa`). Precedence is **Settings UI (UserDefaults) > process env (Xcode scheme /
+`devicectl`) > `Secrets.env` > built-in defaults**. `project.yml` changed, so regenerate with
+`./run.sh` or `xcodegen generate` once.
 
 ### Visual checks
 

@@ -27,6 +27,15 @@ struct KitchenView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                SyncStatusBanner(
+                    stage: app.isBusy ? app.syncStatus : "",
+                    toast: app.syncToast,
+                    toastFailed: app.syncToastFailed
+                )
+                .animation(.snappy, value: app.isBusy)
+                .animation(.snappy, value: app.syncToast)
+            }
             .navigationTitle("Kitchen")
             .searchable(
                 text: $app.query,
@@ -49,6 +58,7 @@ struct KitchenView: View {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
                 }
+
             }
             .sheet(isPresented: $showingSync) {
                 SyncSheet()

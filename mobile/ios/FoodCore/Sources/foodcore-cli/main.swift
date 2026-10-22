@@ -53,7 +53,8 @@ struct CLI {
             let stats = try await Canonicalize.canonicalize(
                 db, provider: provider, embedModel: embedModel(opts, provider), limit: opts.int("limit")
             )
-            print("canonicalized batches=\(stats.batches) ok=\(stats.ok) fallback=\(stats.fallback)")
+            print("canonicalized batches=\(stats.batches) ok=\(stats.ok) fallback=\(stats.fallback) "
+                + "resolved=\(stats.resolved)")
 
         case "ping":
             let provider = MacPawProvider(config: providerConfig(opts))
@@ -82,7 +83,10 @@ struct CLI {
         case "resolve":
             let db = try openDB(opts)
             let provider = MacPawProvider(config: providerConfig(opts))
-            let stats = try await ShelfLifeAgent.resolveMissing(db, provider: provider, limit: opts.int("limit"))
+            let stats = try await ShelfLifeAgent.resolveMissing(
+                db, provider: provider, limit: opts.int("limit"),
+                embedModel: embedModel(opts, provider)
+            )
             print("resolved=\(stats.resolved) unresolved=\(stats.unresolved) errors=\(stats.errors)")
 
         case "chat":

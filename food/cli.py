@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -44,7 +45,18 @@ def _run_sync(conn, retailer: str, lookback: int | None, cdp: str | None) -> Non
     for name in targets:
         console.rule(f"[bold]{name}[/]")
         if name == "costco":
-            raw = costco.pull(lookback or config.COSTCO_LOOKBACK_DAYS, cdp=cdp)
+            # Same incremental rule as the iOS app: with no explicit lookback (sync/refresh),
+            # start from the newest stored purchase date instead of re-pulling the whole window.
+            since = None
+            if lookback is None:
+                row = conn.execute(
+                    "SELECT MAX(purchased_on) AS latest FROM receipts WHERE retailer = 'costco'"
+                ).fetchone()
+                if row and row["latest"]:
+                    since = date.fromisoformat(row["latest"])
+            raw = costco.pull(
+                lookback or config.COSTCO_LOOKBACK_DAYS, cdp=cdp, since=since
+            )
             path = bwin.archive("costco", raw)
             receipts = normalize.normalize_costco(raw)
         elif name == "kroger":
@@ -52,9 +64,7 @@ def _run_sync(conn, retailer: str, lookback: int | None, cdp: str | None) -> Non
             done = {
                 row["external_id"]
                 for row in conn.execute(
-                    """SELECT DISTINCT r.external_id FROM receipts r
-                       JOIN receipt_items ri ON ri.receipt_id = r.id
-                       WHERE r.retailer = 'kroger'"""
+                    "SELECT DISTINCT external_id FROM receipts WHERE retailer = 'kroger'"
                 )
             }
             raw = kroger.pull(

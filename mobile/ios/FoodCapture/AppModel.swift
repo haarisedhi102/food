@@ -1,5 +1,6 @@
 import Foundation
 import FoodCore
+import UIKit
 
 /// Owns the on-device database and the data the UI renders. The DB path can be overridden with
 /// `FOOD_DB_PATH` (used for seeded visual checks in the simulator); otherwise it lives in
@@ -19,6 +20,20 @@ final class AppModel: ObservableObject {
     @Published var showArchived = false
     @Published var isBusy = false
     @Published var message = ""
+    /// Live stage text while a sync runs, so progress stays visible after the browser sheet
+    /// is dismissed. Empty when idle.
+    @Published var syncStatus = ""
+    /// Short-lived result banner shown after a sync finishes and the sheet is gone.
+    @Published var syncToast: String?
+    @Published var syncToastFailed = false
+    /// Receipt lines with no mapping plus products still named from raw receipt text.
+    @Published var repairCount = 0
+    private var toastDismissal: Task<Void, Never>?
+    /// Selected tab. A sync started from the browser sheet switches to Kitchen so the
+    /// progress banner is visible.
+    @Published var selectedTab = Int(ProcessInfo.processInfo.environment["FOOD_TAB"] ?? "0") ?? 0
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    private var idleTimerWasDisabled = false
     /// Empty means "no active search" — all shelves are shown ungrouped by shelf.
     @Published var query = ""
     /// Shelves whose full list is expanded in the browser. Long shelves (pantry) start collapsed
@@ -93,6 +108,7 @@ final class AppModel: ObservableObject {
         } else {
             archivedRows = []
         }
+        repairCount = (try? Canonicalize.repairableCount(db)) ?? 0
     }
 
     func toggleArchived() {
@@ -137,21 +153,31 @@ final class AppModel: ObservableObject {
     /// Normalize → store → canonicalize → resolve → inventory, for a payload the web view fetched.
     func sync(retailer: String, payloadJSON: String) async {
         isBusy = true
-        defer { isBusy = false }
+        syncStatus = "Starting sync…"
+        print("[sync] start retailer=\(retailer) payload=\(payloadJSON.count) bytes")
+        beginExtendedExecution()
+        defer {
+            endExtendedExecution()
+            isBusy = false
+            syncStatus = ""
+        }
         do {
             let payload = try JSONSerialization.jsonObject(with: Data(payloadJSON.utf8))
             let config = Settings.providerConfig()
 
             // Port of `bootstrap`'s reference step: load FoodKeeper before grounding, so shelf
             // lives are grounded rather than LLM-only.
+            syncStatus = "Loading reference data…"
             let loaded = (try? await ReferenceData.loadIfNeeded(db)) ?? 0
             if config.embeddingsConfigured {
+                syncStatus = "Embedding reference data…"
                 _ = try? await ReferenceData.embedIfNeeded(db, provider: provider, model: config.embedModel)
             }
 
             let summary = try await Sync.run(
                 db, retailer: retailer, payload: payload, provider: provider,
-                embedModel: config.embeddingsConfigured ? config.embedModel : nil
+                embedModel: config.embeddingsConfigured ? config.embedModel : nil,
+                progress: progressReporter()
             )
 
             var text = "synced \(summary.newItems) items → \(summary.canonicalized.ok) products"
@@ -159,11 +185,123 @@ final class AppModel: ObservableObject {
                 text += " (\(summary.canonicalized.fallback) fallback)"
             }
             text += ", \(summary.shelfLife.resolved) shelf lives, \(summary.inventory) stock rows"
+            if summary.pending > 0 {
+                text += ", \(summary.pending) items pending (retry next sync)"
+            }
             if loaded > 0 { text += ", FoodKeeper \(loaded) rows" }
             message = text
+            print("[sync] done \(text)")
             refresh()
+            showSyncToast(text, failed: false)
         } catch {
             message = "sync failed: \(error)"
+            print("[sync] failed: \(error)")
+            showSyncToast("Sync failed", failed: true)
+        }
+    }
+
+    /// Retry everything a failed previous run left behind: raw-name fallbacks are dropped so
+    /// their receipt lines become pending again, then classification and shelf life re-run.
+    func retryPending() async {
+        guard !isBusy else { return }
+        selectedTab = 0
+        isBusy = true
+        syncStatus = "Repairing items…"
+        print("[repair] start repairable=\(repairCount)")
+        beginExtendedExecution()
+        defer {
+            endExtendedExecution()
+            isBusy = false
+            syncStatus = ""
+        }
+        do {
+            let config = Settings.providerConfig()
+            let repaired = (try? Canonicalize.repairFallbacks(db)) ?? 0
+            let stats = try await Canonicalize.canonicalize(
+                db, provider: provider,
+                embedModel: config.embeddingsConfigured ? config.embedModel : nil,
+                progress: progressReporter()
+            )
+            let shelf = try await ShelfLifeAgent.resolveMissing(
+                db, provider: provider,
+                embedModel: config.embeddingsConfigured ? config.embedModel : nil,
+                progress: progressReporter()
+            )
+            _ = try Inventory.build(db)
+            _ = try Inventory.refreshStatus(db)
+            refresh()
+
+            var text = "repaired \(repaired) raw names"
+            if stats.ok > 0 { text += ", classified \(stats.ok)" }
+            if stats.pending > 0 { text += ", \(stats.pending) still pending" }
+            text += ", \(shelf.resolved) shelf lives"
+            message = text
+            print("[repair] done \(text)")
+            showSyncToast(text, failed: false)
+        } catch {
+            message = "repair failed: \(error)"
+            print("[repair] failed: \(error)")
+            showSyncToast("Repair failed", failed: true)
+        }
+    }
+
+    private func progressReporter() -> @Sendable (String) -> Void {
+        { [weak self] text in
+            print("[sync] \(text)")
+            Task { @MainActor in
+                guard let self, self.isBusy else { return }
+                self.syncStatus = text
+            }
+        }
+    }
+
+    #if DEBUG
+    /// Empties the Kitchen for a live end-to-end test, keeping the FoodKeeper reference data.
+    func resetKitchenData() {
+        try? db.exec(
+            """
+            DELETE FROM inventory;
+            DELETE FROM item_map;
+            DELETE FROM receipt_items;
+            DELETE FROM receipts;
+            DELETE FROM products;
+            DELETE FROM prompt_cache;
+            DELETE FROM llm_calls;
+            """
+        )
+        print("[test] kitchen data cleared")
+        refresh()
+    }
+    #endif
+
+    /// A slow sync shouldn't be interrupted by the screen locking: keep the display awake
+    /// while it runs, and ask for background time in case the person leaves the app anyway.
+    private func beginExtendedExecution() {
+        idleTimerWasDisabled = UIApplication.shared.isIdleTimerDisabled
+        UIApplication.shared.isIdleTimerDisabled = true
+        guard backgroundTask == .invalid else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Receipt sync") {
+            [weak self] in
+            self?.endExtendedExecution()
+        }
+    }
+
+    private func endExtendedExecution() {
+        UIApplication.shared.isIdleTimerDisabled = idleTimerWasDisabled
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
+    }
+
+    /// Keep the result on screen briefly after a sync, since the browser sheet may be gone.
+    private func showSyncToast(_ text: String, failed: Bool) {
+        syncToastFailed = failed
+        syncToast = text
+        toastDismissal?.cancel()
+        toastDismissal = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            self?.syncToast = nil
         }
     }
 
@@ -174,6 +312,16 @@ final class AppModel: ObservableObject {
 
     func product(_ id: Int) -> [String: SQLValue]? {
         try? ItemDetail.product(db, id: id)
+    }
+
+    /// Receipts already in the on-device database, so a repeat fetch only asks for new ones.
+    func knownReceiptKeys(for retailer: String) -> Set<String> {
+        (try? Store.knownExternalIDs(db, retailer: retailer)) ?? []
+    }
+
+    /// Newest purchase date stored for a retailer — the start point for a date-range fetch.
+    func latestPurchaseDate(for retailer: String) -> String? {
+        try? Store.latestPurchaseDate(db, retailer: retailer)
     }
 
     func pricePoints(_ id: Int) -> [[String: Any]] {

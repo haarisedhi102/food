@@ -14,6 +14,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv("FOOD_DATA_DIR", ROOT / "data"))
 IMPORTS_DIR = DATA_DIR / "imports"
 BROWSER_PROFILE_DIR = DATA_DIR / "browser-profile"
+# Full cookie jar (including session-only cookies) saved after a successful login. Chromium
+# does not persist session cookies to the profile, but Kroger's auth lives in them.
+SESSION_STATE_PATH = DATA_DIR / "session-state.json"
 DB_PATH = Path(os.getenv("FOOD_DB_PATH", DATA_DIR / "food.db"))
 
 # LLM (Command Code Provider API)
@@ -44,7 +47,7 @@ EMBED_BATCH_SIZE = int(os.getenv("FOOD_EMBED_BATCH_SIZE", "64"))
 PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "").lower() in ("1", "true", "yes")
 PHOENIX_PROJECT = os.getenv("PHOENIX_PROJECT", "food")
 # Blank means the local Phoenix (http://localhost:6006); set for Phoenix Cloud.
-PHOENIX_ENDPOINT = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "")
+PHOENIX_ENDPOINT = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces")
 
 # Ingestion
 COSTCO_LOOKBACK_DAYS = int(os.getenv("FOOD_COSTCO_LOOKBACK_DAYS", "90"))

@@ -28,7 +28,7 @@ from food import normalize  # noqa: E402
 
 PRODUCT_FIELDS = [
     "canonical_name", "brand", "category", "pkg_size", "unit", "is_food", "is_perishable",
-    "storage", "shelf_life_days", "shelf_life_days_opened", "shelf_life_source", "foodkeeper_id",
+    "storage", "shelf_life_days", "shelf_life_days_opened", "shelf_life_source",
 ]
 
 

@@ -27,6 +27,16 @@ targets:
       - path: FoodCapture
     dependencies:
       - package: FoodCore
+    postBuildScripts:
+      # A device build can't read the repo or your shell env, so bundle the gitignored
+      # Secrets.env (if present) next to the app binary. Debug only: a Release/archive build
+      # must never ship the developer's keys inside the .ipa. No secrets live in the repo.
+      - name: Copy local secrets
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$CONFIGURATION" = "Debug" ] && [ -f "$SRCROOT/Secrets.env" ]; then
+            cp "$SRCROOT/Secrets.env" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Secrets.env"
+          fi
     info:
       path: FoodCapture/Info.plist
       properties:
@@ -50,7 +60,7 @@ targets:
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         # Sign with the user's team so physical-device runs work; the simulator ignores signing.
-        DEVELOPMENT_TEAM: 4XANTCF7HL
+        DEVELOPMENT_TEAM: 6H5AQ9JDNV
         CODE_SIGN_STYLE: Automatic
       configs:
         Debug:

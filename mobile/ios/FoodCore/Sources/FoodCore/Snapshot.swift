@@ -42,7 +42,7 @@ public enum Snapshot {
             SELECT m.retailer, m.item_key, m.raw_description,
                    p.canonical_name, p.brand, p.category, p.pkg_size, p.unit, p.is_food,
                    p.is_perishable, p.storage, p.shelf_life_days, p.shelf_life_days_opened,
-                   p.shelf_life_source, p.foodkeeper_id
+                   p.shelf_life_source
             FROM item_map m LEFT JOIN products p ON p.id = m.product_id
             """
         ) {
@@ -53,7 +53,7 @@ public enum Snapshot {
                 for col in [
                     "canonical_name", "brand", "category", "pkg_size", "unit", "is_food",
                     "is_perishable", "storage", "shelf_life_days", "shelf_life_days_opened",
-                    "shelf_life_source", "foodkeeper_id",
+                    "shelf_life_source",
                 ] {
                     p[col] = any(r[col] ?? .null)
                 }

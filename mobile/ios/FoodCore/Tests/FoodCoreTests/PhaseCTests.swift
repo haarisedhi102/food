@@ -22,6 +22,26 @@ final class FakeProvider: LLMProvider, @unchecked Sendable {
     func embed(_ texts: [String]) async throws -> [[Float]] {
         Array(embedVectors.prefix(texts.count))
     }
+
+    /// Keeps canonicalization tests fast: research yields notes, synthesis yields an empty
+    /// verdict, so the resolver has nothing to apply and never retries.
+    func chat(
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double
+    ) async throws -> ChatCompletion {
+        let system = messages.first { ($0["role"] as? String) == "system" }?["content"] as? String
+        if system == ShelfLifeAgent.researchSystem {
+            return ChatCompletion(content: "notes", toolCalls: [], model: "fake-model")
+        }
+        return ChatCompletion(
+            content: nil,
+            toolCalls: [ToolCall(
+                id: "v1",
+                name: ShelfLifeAgent.verdictToolName,
+                arguments: #"{"items":[]}"#
+            )],
+            model: "fake-model"
+        )
+    }
 }
 
 final class PhaseCTests: XCTestCase {
@@ -79,8 +99,9 @@ final class PhaseCTests: XCTestCase {
 
         let product = try d.query("SELECT * FROM products").first
         XCTAssertEqual(product?["canonical_name"]?.stringValue, "Organic Whole Milk")
-        XCTAssertEqual(product?["shelf_life_days"]?.intValue, 7)
-        XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "llm")
+        // Shelf life is resolved by ShelfLifeAgent afterwards, not during canonicalization.
+        XCTAssertNil(product?["shelf_life_days"]?.intValue)
+        XCTAssertNil(product?["shelf_life_source"]?.stringValue)
         XCTAssertEqual(try d.query("SELECT COUNT(*) c FROM item_map").first?["c"]?.intValue, 1)
     }
 

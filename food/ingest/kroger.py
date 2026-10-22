@@ -195,6 +195,9 @@ def pull(
                 break
             time.sleep(random.uniform(1.0, 2.5))
 
+        # Keep the session cookies (sid/JSESSIONID are session-only) for the next run.
+        b.save_session(ctx)
+
     return out
 
 

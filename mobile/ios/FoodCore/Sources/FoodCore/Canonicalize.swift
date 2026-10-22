@@ -20,25 +20,34 @@ public enum Canonicalize {
       unit ("count" | "weight" | "volume" or null),
       is_food (bool), is_perishable (bool),
       storage ("fridge" | "freezer" | "pantry" | "counter"),
-      shelf_life_days (int or null), shelf_life_days_opened (int or null),
       confidence (0.0-1.0).
+
+    Shelf life is resolved in a later stage — do not estimate it here.
 
     Rules:
     - Write canonical_name as the plain, readable product name (expand abbreviations).
-    - If is_perishable is true, shelf_life_days is REQUIRED (whole days, never null) — give
-      your best estimate.
-    - Non-perishable items (coffee, rice, canned goods, spices, oil) may set shelf_life_days
-      null; they do not expire.
+    - Fresh bakery, deli, refrigerated, meat, seafood, produce, dairy and prepared foods are
+      is_perishable=true, even when a shelf-stable version of the product exists (dry pasta and
+      packaged cookies are shelf-stable; fresh bread, naan and refrigerated crusts are not).
+    - Non-perishable items (coffee, rice, canned goods, spices, oil) are is_perishable=false;
+      they do not expire.
     - Non-food items (apparel, housewares, electronics, flowers, tobacco) get is_food=false,
-      is_perishable=false, and shelf_life_days null.
+      is_perishable=false.
     - If you are unsure, lower confidence rather than guessing wildly.
 
     Examples:
-      "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":7,"confidence":0.8}
-      "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.75}
-      "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","shelf_life_days":21,"confidence":0.8}
-      "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","shelf_life_days":null,"confidence":0.6}
-      "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","shelf_life_days":180,"confidence":0.7}
+      "KS ORG A2 PR"      -> {"canonical_name":"Organic A2 Milk","brand":"Kirkland Signature","category":"Dairy Products & Eggs","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+      "KS COLMBIAN"       -> {"canonical_name":"Colombian Coffee","brand":"Kirkland Signature","category":"Beverages","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
+      "PASTURE EGGS"      -> {"canonical_name":"Pasture-Raised Eggs","brand":null,"category":"Dairy Products & Eggs","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+      "MWCHINOPANT"       -> {"canonical_name":"Apparel","brand":null,"category":null,"pkg_size":null,"unit":"count","is_food":false,"is_perishable":false,"storage":"pantry","confidence":0.6}
+      "SHRIMP 31/40"      -> {"canonical_name":"Shrimp","brand":null,"category":"Seafood","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":true,"storage":"freezer","confidence":0.7}
+      "WW SANDWICH BREAD" -> {"canonical_name":"Whole Wheat Sandwich Bread","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"counter","confidence":0.8}
+      "CAULIFLOWER CRUST" -> {"canonical_name":"Cauliflower Pizza Crusts","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.7}
+      "NAAN DIPPERS"      -> {"canonical_name":"Naan Dippers","brand":null,"category":"Bakery","pkg_size":null,"unit":"count","is_food":true,"is_perishable":true,"storage":"pantry","confidence":0.75}
+      "ORG ORANGE JUICE"  -> {"canonical_name":"Orange Juice","brand":null,"category":"Beverages","pkg_size":"1/2 gal","unit":"volume","is_food":true,"is_perishable":true,"storage":"fridge","confidence":0.8}
+      "PACKAGED COOKIES"  -> {"canonical_name":"Packaged Cookies","brand":null,"category":"Snacks","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.75}
+      "JASMINE RICE"      -> {"canonical_name":"Jasmine Rice","brand":null,"category":"Pantry Staples","pkg_size":null,"unit":"weight","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
+      "CLOVER HONEY"      -> {"canonical_name":"Honey","brand":null,"category":"Condiments & Sauces","pkg_size":null,"unit":"count","is_food":true,"is_perishable":false,"storage":"pantry","confidence":0.85}
 
     Respond with ONLY JSON: {"items": [ ... ]}
     """
@@ -47,6 +56,10 @@ public enum Canonicalize {
         public var batches = 0
         public var ok = 0
         public var fallback = 0
+        public var resolved = 0
+        /// Receipt lines still without a product mapping (usually a failed LLM call).
+        /// They stay pending and the next `canonicalize` retries them.
+        public var pending = 0
     }
 
     /// Distinct items seen on receipts that have no product mapping yet.
@@ -64,6 +77,46 @@ public enum Canonicalize {
         """
         if let limit = limit { sql += " LIMIT \(limit)" }
         return try db.query(sql)
+    }
+
+    /// Products created by the raw-text fallback (the model output never parsed). They keep
+    /// the receipt description as the name and are marked by having no model/classification.
+    static let fallbackPredicate = "p.llm_model IS NULL AND p.classified_at IS NULL"
+
+    /// Unmapped receipt lines plus raw-name fallback products — everything a retry can fix.
+    public static func repairableCount(_ db: Database) throws -> Int {
+        let pending = try pendingCount(db)
+        let rows = try db.query(
+            """
+            SELECT COUNT(*) n FROM item_map m
+            JOIN products p ON p.id = m.product_id
+            WHERE \(fallbackPredicate)
+            """
+        )
+        return pending + (rows.first?["n"]?.intValue ?? 0)
+    }
+
+    /// Drop raw-name fallback products and their mappings (and their inventory rows) so the
+    /// next `canonicalize` sees those receipt lines as pending and can classify them again.
+    @discardableResult
+    public static func repairFallbacks(_ db: Database) throws -> Int {
+        let rows = try db.query(
+            """
+            SELECT m.id AS map_id, p.id AS product_id FROM item_map m
+            JOIN products p ON p.id = m.product_id
+            WHERE \(fallbackPredicate)
+            """
+        )
+        var repaired = 0
+        for row in rows {
+            guard let mapID = row["map_id"]?.intValue,
+                  let productID = row["product_id"]?.intValue else { continue }
+            try db.run("DELETE FROM inventory WHERE product_id = ?", [.int(Int64(productID))])
+            try db.run("DELETE FROM item_map WHERE id = ?", [.int(Int64(mapID))])
+            try db.run("DELETE FROM products WHERE id = ?", [.int(Int64(productID))])
+            repaired += 1
+        }
+        return repaired
     }
 
     public static func pendingCount(_ db: Database) throws -> Int {
@@ -124,15 +177,14 @@ public enum Canonicalize {
     static func storeProduct(
         _ db: Database, retailer: String, item: [String: SQLValue], ci: CanonicalItem, model: String
     ) throws -> Int64 {
-        let days = ci.shelfLifeDays
-        let source: SQLValue = days != nil ? .text("llm") : .null
+        // Shelf life is not estimated here — `ShelfLifeAgent` fills it for the whole batch after.
         try db.run(
             """
             INSERT INTO products
             (canonical_name, brand, category, pkg_size, unit, is_food, is_perishable, storage,
-             shelf_life_days, shelf_life_days_opened, shelf_life_source, foodkeeper_id,
+             shelf_life_days, shelf_life_days_opened, shelf_life_source,
              llm_model, llm_confidence, classified_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            VALUES (?,?,?,?,?,?,?,?,NULL,NULL,NULL,?,?,datetime('now'))
             """,
             [
                 .text(ci.canonicalName),
@@ -143,10 +195,6 @@ public enum Canonicalize {
                 .int(ci.isFood ? 1 : 0),
                 .int(ci.isPerishable ? 1 : 0),
                 ci.storage.map { SQLValue.text($0) } ?? .null,
-                days.map { SQLValue.int(Int64($0)) } ?? .null,
-                ci.shelfLifeDaysOpened.map { SQLValue.int(Int64($0)) } ?? .null,
-                source,
-                .null,
                 .text(model),
                 .double(ci.confidence),
             ]
@@ -165,28 +213,6 @@ public enum Canonicalize {
             ]
         )
         return pid
-    }
-
-    /// Ground stored products in FoodKeeper: hybrid shortlist per name, one batched rerank.
-    static func ground(
-        _ db: Database,
-        stored: [(pid: Int64, name: String, storage: String)],
-        provider: LLMProvider,
-        model: String?
-    ) async throws {
-        guard !stored.isEmpty else { return }
-        let picks = try await Reference.matchBatch(db, names: stored.map { $0.name }, provider: provider, model: model)
-        for (pid, name, storage) in stored {
-            guard let fid = picks[name] ?? nil else { continue }
-            guard let days = FoodKeeper.daysFor(db, foodkeeperID: fid, storage: storage) else { continue }
-            try db.run(
-                """
-                UPDATE products SET foodkeeper_id = ?, shelf_life_days = ?, shelf_life_source = 'foodkeeper'
-                WHERE id = ?
-                """,
-                [.int(Int64(fid)), .int(Int64(days)), .int(pid)]
-            )
-        }
     }
 
     /// A model output we couldn't parse: keep the pipeline moving with a placeholder row.
@@ -211,20 +237,29 @@ public enum Canonicalize {
         data: [String: Any],
         model: String,
         stats: inout Stats
-    ) throws -> (failed: [[String: SQLValue]], stored: [(Int64, String, String)]) {
+    ) throws -> (failed: [[String: SQLValue]], stored: [[String: Any]]) {
         var byKey: [String: [String: Any]] = [:]
         for raw in (data["items"] as? [[String: Any]]) ?? [] {
             if let key = raw["item_key"] as? String { byKey[key] = raw }
         }
         var failed: [[String: SQLValue]] = []
-        var stored: [(Int64, String, String)] = []
+        var stored: [[String: Any]] = []
         for item in batch {
             guard let raw = byKey[item["item_key"]?.stringValue ?? ""], let ci = makeItem(raw) else {
                 failed.append(item)
                 continue
             }
-            let pid = try storeProduct(db, retailer: item["retailer"]?.stringValue ?? "", item: item, ci: ci, model: model)
-            stored.append((pid, ci.canonicalName, ci.storage ?? "fridge"))
+            let pid = try storeProduct(
+                db, retailer: item["retailer"]?.stringValue ?? "", item: item, ci: ci, model: model
+            )
+            if ci.isFood {
+                stored.append([
+                    "id": Int(pid),
+                    "name": ci.canonicalName,
+                    "category": ci.category.map { $0 as Any } ?? NSNull(),
+                    "storage": ci.storage.map { $0 as Any } ?? NSNull(),
+                ])
+            }
             stats.ok += 1
         }
         return (failed, stored)
@@ -233,10 +268,11 @@ public enum Canonicalize {
     /// Canonicalize pending items. Each product is cached in `item_map`, so re-running only
     /// touches items that failed. Batches run sequentially (temperature 0, so output is stable).
     ///
-    /// `embedModel` enables the vector half of hybrid retrieval during grounding; pass nil
-    /// (or leave embeddings unconfigured) to ground with the lexical retriever alone.
+    /// Shelf life is resolved for the newly stored food items by `ShelfLifeAgent`, as in
+    /// `food/canonicalize.py`.
     public static func canonicalize(
-        _ db: Database, provider: LLMProvider, embedModel: String? = nil, limit: Int? = nil
+        _ db: Database, provider: LLMProvider, embedModel: String? = nil, limit: Int? = nil,
+        progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Stats {
         var stats = Stats()
         let items = try pending(db, limit: limit)
@@ -246,41 +282,59 @@ public enum Canonicalize {
             Array(items[$0 ..< min($0 + batchSize, items.count)])
         }
         var failed: [[String: SQLValue]] = []
-        for batch in batches {
+        for (index, batch) in batches.enumerated() {
             stats.batches += 1
-            var stored: [(Int64, String, String)] = []
+            progress?("Classifying products, batch \(index + 1) of \(batches.count)…")
+            var stored: [[String: Any]] = []
             do {
                 let response = try await provider.chatJSON(system: system, user: buildUser(batch), temperature: 0)
                 record(db, purpose: "canonicalize", model: response.model)
-                (failed, stored) = try apply(db, batch: batch, data: response.json, model: response.model, stats: &stats)
+                let (batchFailed, batchStored) = try apply(
+                    db, batch: batch, data: response.json, model: response.model, stats: &stats
+                )
+                failed += batchFailed
+                stored = batchStored
             } catch {
+                print("[canon] batch \(index + 1)/\(batches.count) failed: \(error)")
                 failed += batch
             }
-            try await ground(db, stored: stored, provider: provider, model: embedModel)
+            progress?("Resolving shelf life, batch \(index + 1) of \(batches.count)…")
+            let shelf = try await ShelfLifeAgent.resolveBatch(
+                db, items: stored, provider: provider, embedModel: embedModel, progress: progress
+            )
+            stats.resolved += shelf.resolved
         }
 
         if !failed.isEmpty {
+            progress?("Retrying \(failed.count) products…")
             for batch in stride(from: 0, to: failed.count, by: batchSize).map({
                 Array(failed[$0 ..< min($0 + batchSize, failed.count)])
             }) {
-                var stored: [(Int64, String, String)] = []
+                var stored: [[String: Any]] = []
                 if let response = try? await provider.chatJSON(system: system, user: buildUser(batch), temperature: 0) {
                     record(db, purpose: "canonicalize", model: response.model)
-                    let (still, s) = try apply(db, batch: batch, data: response.json, model: response.model, stats: &stats)
-                    stored = s
+                    let (still, batchStored) = try apply(
+                        db, batch: batch, data: response.json, model: response.model, stats: &stats
+                    )
+                    stored = batchStored
                     for item in still {
                         try fallback(db, retailer: item["retailer"]?.stringValue ?? "", item: item)
                         stats.fallback += 1
                     }
                 } else {
-                    for item in batch {
-                        try fallback(db, retailer: item["retailer"]?.stringValue ?? "", item: item)
-                        stats.fallback += 1
-                    }
+                    // A transport/API failure (timeout, 5xx) isn't a bad model answer.
+                    // Leave these items unmapped so the next sync retries them instead of
+                    // permanently caching raw receipt text as the product name.
+                    print("[canon] retry call failed; leaving \(batch.count) products pending")
                 }
-                try await ground(db, stored: stored, provider: provider, model: embedModel)
+                let shelf = try await ShelfLifeAgent.resolveBatch(
+                    db, items: stored, provider: provider, embedModel: embedModel,
+                    progress: progress
+                )
+                stats.resolved += shelf.resolved
             }
         }
+        stats.pending = (try? pendingCount(db)) ?? 0
         return stats
     }
 

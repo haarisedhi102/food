@@ -92,6 +92,13 @@ struct SyncSheet: View {
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            if app.isBusy, !app.syncStatus.isEmpty {
+                Text(app.syncStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if !app.message.isEmpty {
                 Text(app.message)
                     .font(.caption2)
@@ -105,19 +112,34 @@ struct SyncSheet: View {
 
     private func sync() async {
         guard let payload = pendingPayload, let retailer = pendingRetailer else { return }
+        print("[sync] tapped Sync (\(retailer), \(payload.count) bytes)")
+        // Close the browser and show the Kitchen, where the progress banner lives.
+        app.selectedTab = 0
+        dismiss()
         await app.sync(retailer: retailer, payloadJSON: payload)
     }
 
     private func fetch() async {
         model.isBusy = true
         defer { model.isBusy = false }
-        let (summary, payload) = await model.fetchReceipts()
+        let retailer = model.retailer.rawValue
+        let (summary, payload, ok) = await model.fetchReceipts(
+            knownKeys: app.knownReceiptKeys(for: retailer),
+            since: app.latestPurchaseDate(for: retailer)
+        )
+        print("[fetch] \(retailer): ok=\(ok) \(summary) payload=\(payload.count) bytes")
         do {
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("\(model.retailer.rawValue)-raw.json")
             try payload.write(to: url, atomically: true, encoding: .utf8)
-            pendingPayload = payload
-            pendingRetailer = model.retailer.rawValue
+            if ok {
+                pendingPayload = payload
+                pendingRetailer = model.retailer.rawValue
+            } else {
+                pendingPayload = nil
+                pendingRetailer = nil
+                errorMessage = summary
+            }
             exportText = "\(summary)\n\nwrote \(url.lastPathComponent) (\(payload.count) bytes)"
             exportURL = url
             storageKeys = []

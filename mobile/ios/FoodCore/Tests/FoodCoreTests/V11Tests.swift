@@ -48,27 +48,41 @@ final class V11Tests: XCTestCase {
 
     // MARK: - Shelf-life agent
 
-    func testAgentCallsWebSearchThenAnswersJSON() async throws {
+    func testResolverUsesWebSearchThenForcedVerdict() async throws {
+        let d = try db()
+        let pid = try seedProduct(d, name: "Milk")
         let recorder = Recorder()
+
         let toolCall = ChatCompletion(
             content: nil,
             toolCalls: [ToolCall(id: "c1", name: "web_search", arguments: #"{"query":"milk shelf life"}"#)],
             model: "fake"
         )
-        let answer = ChatCompletion(
-            content: #"{"is_perishable":true,"storage":"fridge","shelf_life_days":7,"confidence":0.9,"rationale":"ok"}"#,
-            toolCalls: [],
+        let notes = ChatCompletion(
+            content: "Milk: 7 days, fridge (web).", toolCalls: [], model: "fake"
+        )
+        let verdict = ChatCompletion(
+            content: nil,
+            toolCalls: [ToolCall(
+                id: "v1",
+                name: ShelfLifeAgent.verdictToolName,
+                arguments: "{\"items\":[{\"item_id\":\(pid),\"source\":\"web\","
+                    + "\"shelf_life_days\":7,\"is_perishable\":true,"
+                    + "\"storage\":\"fridge\",\"confidence\":0.9}]}"
+            )],
             model: "fake"
         )
-        let provider = ScriptedProvider(completions: [toolCall, answer])
 
-        let guess = try await ShelfLifeAgent.resolve(
-            name: "Milk", provider: provider,
+        let stats = try await ShelfLifeAgent.resolveMissing(
+            d,
+            provider: ScriptedProvider(completions: [toolCall, notes, verdict]),
             search: { query in recorder.queries.append(query); return "results" }
         )
-        XCTAssertEqual(guess?.shelfLifeDays, 7)
-        XCTAssertEqual(guess?.storage, "fridge")
+        XCTAssertEqual(stats.resolved, 1)
         XCTAssertEqual(recorder.queries, ["milk shelf life"])
+        let product = try d.query("SELECT shelf_life_days, shelf_life_source FROM products").first
+        XCTAssertEqual(product?["shelf_life_days"]?.intValue, 7)
+        XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "web")
     }
 
     func testResolveMissingWritesShelfLifeAndInventoryExpiry() async throws {
@@ -78,18 +92,26 @@ final class V11Tests: XCTestCase {
             "INSERT INTO inventory (product_id, quantity, remaining_qty, acquired_on, status) VALUES (?, 1, 1, '2026-01-01', 'active')",
             [.int(pid)]
         )
-        let answer = ChatCompletion(
-            content: #"{"is_perishable":true,"storage":"fridge","shelf_life_days":7,"confidence":0.9}"#,
-            toolCalls: [], model: "fake"
+        let notes = ChatCompletion(content: "Milk keeps 7 days in the fridge.", toolCalls: [], model: "fake")
+        let verdict = ChatCompletion(
+            content: nil,
+            toolCalls: [ToolCall(
+                id: "v1",
+                name: ShelfLifeAgent.verdictToolName,
+                arguments: "{\"items\":[{\"item_id\":\(pid),\"source\":\"llm\","
+                    + "\"shelf_life_days\":7,\"is_perishable\":true,"
+                    + "\"storage\":\"fridge\",\"confidence\":0.9}]}"
+            )],
+            model: "fake"
         )
         let stats = try await ShelfLifeAgent.resolveMissing(
-            d, provider: ScriptedProvider(completions: [answer]), search: { _ in "" }
+            d, provider: ScriptedProvider(completions: [notes, verdict]), search: { _ in "" }
         )
         XCTAssertEqual(stats.resolved, 1)
 
         let product = try d.query("SELECT shelf_life_days, shelf_life_source FROM products").first
         XCTAssertEqual(product?["shelf_life_days"]?.intValue, 7)
-        XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "web")
+        XCTAssertEqual(product?["shelf_life_source"]?.stringValue, "llm")
         let inv = try d.query("SELECT expires_on FROM inventory").first
         XCTAssertEqual(inv?["expires_on"]?.stringValue, "2026-01-08")
     }

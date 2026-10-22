@@ -29,6 +29,9 @@ public final class MacPawProvider: LLMProvider {
             port: url.port ?? (url.scheme == "http" ? 80 : 443),
             scheme: url.scheme ?? "https",
             basePath: basePath,
+            // The reasoning model can take >60s on a 30-item batch (Python's client uses a
+            // much longer default). 60s was timing out the whole batch and poisoning item_map.
+            timeoutInterval: 180,
             parsingOptions: .relaxed
         )
         return OpenAI(configuration: configuration)
@@ -45,7 +48,9 @@ public final class MacPawProvider: LLMProvider {
             temperature: temperature
         )
         let result = try await chatClient.chats(query: query)
-        let content = result.choices.first?.message.content ?? ""
+        let choice = result.choices.first
+        let content = choice?.message.content ?? ""
+        print("[llm] model=\(result.model) finish=\(choice?.finishReason ?? "?") chars=\(content.count)")
         return ChatResponse(json: try JSONExtract.extract(content), model: result.model)
     }
 
@@ -61,12 +66,19 @@ public final class MacPawProvider: LLMProvider {
     public func chat(
         messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double
     ) async throws -> ChatCompletion {
+        try await chat(messages: messages, tools: tools, temperature: temperature, forceTool: nil)
+    }
+
+    public func chat(
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
+    ) async throws -> ChatCompletion {
         let params = try messages.map(MacPawProvider.messageParam)
         let toolParams = try tools?.map(MacPawProvider.toolParam)
         let query = ChatQuery(
             messages: params,
             model: primaryModel,
             temperature: temperature,
+            toolChoice: forceTool.map { .function($0) },
             tools: toolParams
         )
         let result = try await chatClient.chats(query: query)

@@ -46,8 +46,7 @@ public enum Schema {
         storage                  TEXT,
         shelf_life_days          INTEGER,
         shelf_life_days_opened   INTEGER,
-        shelf_life_source        TEXT,          -- foodkeeper | llm | manual
-        foodkeeper_id            INTEGER,
+        shelf_life_source        TEXT,          -- foodkeeper | web | llm
         llm_model                TEXT,
         llm_confidence           REAL,
         classified_at            TEXT

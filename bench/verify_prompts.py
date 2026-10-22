@@ -82,7 +82,6 @@ ok &= check(
     norm_sql(swift_strings(CORE / "Schema.swift", "migrations")[0]),
 )
 ok &= check("canonicalize SYSTEM", py_string(FOOD / "canonicalize.py", "SYSTEM"), swift_strings(CORE / "Canonicalize.swift", "system")[0])
-ok &= check("reference MATCH_SYSTEM", py_string(FOOD / "reference.py", "MATCH_SYSTEM"), swift_strings(CORE / "Reference.swift", "matchSystem")[0])
 ok &= check("chat CHAT_SYSTEM", py_string(FOOD / "web/app.py", "CHAT_SYSTEM"), swift_strings(CORE / "Chat.swift", "system")[0])
 ok &= check(
     "digest prompt",
@@ -90,10 +89,14 @@ ok &= check(
     swift_strings(CORE / "Chat.swift", "digestSystem")[0],
 )
 ok &= check(
-    "shelflife_agent SYSTEM (prefix)",
-    py_string(FOOD / "shelflife_agent.py", "SYSTEM"),
-    swift_strings(CORE / "ShelfLifeAgent.swift", "system")[0],
-    prefix_only=True,
+    "resolve RESEARCH_SYSTEM",
+    py_string(FOOD / "resolve.py", "RESEARCH_SYSTEM"),
+    swift_strings(CORE / "ShelfLifeAgent.swift", "researchSystem")[0],
+)
+ok &= check(
+    "resolve SYNTH_SYSTEM",
+    py_string(FOOD / "resolve.py", "SYNTH_SYSTEM"),
+    swift_strings(CORE / "ShelfLifeAgent.swift", "synthSystem")[0],
 )
 
 print("\nRESULT:", "ALL MATCH" if ok else "MISMATCH")
