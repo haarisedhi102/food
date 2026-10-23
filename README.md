@@ -2,15 +2,14 @@
 
 Track your Kroger and Costco purchases, and know what's about to go bad.
 
-Pulls your receipts from both retailers through a real logged-in Chrome, uses an LLM to
-reconcile their very different line-item formats into one canonical grocery schema, grounds
-shelf life in the USDA FoodKeeper dataset, and builds a decaying fridge / freezer / pantry
-you can query.
+Receipts are pulled through a real logged-in browser, reconciled by an LLM into one grocery
+schema, grounded against USDA FoodKeeper, and turned into a decaying fridge / freezer / pantry.
+The same pipeline runs in the Python CLI + dashboard and on-device in the macOS/iOS app.
 
 ## How it works
 
 ```
-real Chrome (Playwright, persistent profile)
+real browser session (Playwright profile, or the app's WKWebView)
       │  fetch() inside the page, so requests carry your real cookies + TLS
       ▼
 ingest/costco.py · ingest/kroger.py ──► data/imports/*.json  (raw, archived)
@@ -27,9 +26,12 @@ inventory.py      expires_on, remaining qty, FIFO consumption, auto-archive
 web/app.py        dashboard: shelves, expiring soon, price history, chat
 ```
 
+The mobile app runs the same stages on-device (`FoodCore`); Rust `Rig` owns only LLM,
+embedding and Jev transport.
+
 **Keying.** `item_map` is keyed on the retailer's own stable id — Costco `itemNumber`,
-Kroger `upc` — never the description (the least stable field). Each product is canonicalized
-exactly once and reused across every receipt.
+Kroger `upc` — never the description. Each product is canonicalized exactly once and reused
+across every receipt, including repeat purchases.
 
 ## Setup
 
@@ -44,7 +46,7 @@ endpoint `https://api.commandcode.ai/provider/v1`.
 
 `OPENROUTER_API_KEY` is optional. Without it, FoodKeeper candidate search is keyword-only;
 with it, `embed-ref` builds a semantic index and search becomes hybrid (keyword +
-embeddings). The default embedding model is a cheap paid one (`baai/bge-base-en-v1.5`).
+embeddings). The default embedding model is `baai/bge-base-en-v1.5`.
 
 ### Tracing (optional)
 
@@ -58,8 +60,8 @@ PHOENIX_ENABLED=1 uv run food classify
 ```
 
 `PHOENIX_PROJECT` names the project (default `food`); set `PHOENIX_COLLECTOR_ENDPOINT` to
-ship to Phoenix Cloud instead of the local server. Instrumentation is automatic, so both
-the OpenAI client and the LangChain stack are traced.
+ship to Phoenix Cloud instead of the local server. The app emits the same `gen_ai.*` spans
+into the same project.
 
 ## Use
 
@@ -75,9 +77,9 @@ uv run food status                     # counts, LLM calls today
 uv run food digest                     # "use it or lose it" suggestions
 ```
 
-`bootstrap` and `refresh` both open a real Chrome to sync receipts, so neither is fully
+`bootstrap` and `refresh` open a real Chrome to sync receipts, so neither is fully
 unattended: log in once (MFA) and the persistent profile is reused. On an interval, prefer
-`food refresh` (sync + classify + stock) — it only pulls what's new.
+`food refresh` — it only pulls what's new.
 
 The steps are also available individually:
 
@@ -100,7 +102,9 @@ uv run food stock                      # build/refresh the fridge & pantry
 | `sync [--retailer …]` | Pull receipts via a real logged-in Chrome |
 | `import <file.json> --retailer …` | Re-run the pipeline from a saved raw payload |
 | `classify` | Canonicalize unmapped items and resolve each item's shelf life (batched, cached) |
-| `resolve [--refresh] [--ids …] [--limit N]` | (Re)resolve shelf lives for stored products; default fills only the gaps |
+| `resolve [--refresh] [--ids …] [--limit N]` | Fill shelf-life gaps and re-resolve flagged items; `--refresh` also re-resolves unpinned values |
+| `shelf-life <product_id> --days N [--opened N]` | Pin a shelf life; it applies to every future purchase |
+| `review <product_id> [--clear]` | Flag a product as wrong (re-resolved on the next pass), or clear the flag |
 | `stock` | Build/refresh inventory and show what's expiring |
 | `status` | Counts and per-purpose LLM usage |
 | `digest` | LLM "use it or lose it" plan |
@@ -109,62 +113,58 @@ uv run food stock                      # build/refresh the fridge & pantry
 
 ## Design notes
 
-- **Akamai.** Both retailers drop non-browser TLS fingerprints and reject headless. So every
-  API call runs *inside* a real headed Chrome with a persistent profile, via `page.evaluate`.
-  You log in once (MFA included); the session is reused afterwards. `sync` is therefore **not
-  fully unattended**.
+- **Fronted retailers.** Both receipt endpoints reject headless HTTP clients, so calls run
+  inside a real browser with a persistent profile. Log in once (MFA included); the session is
+  reused. `sync` is therefore not fully unattended, and the edge throttles per IP — the clients
+  stop at the first `429`/`403` rather than retrying.
 - **Unofficial APIs.** Costco uses its internal GraphQL (`receiptsWithCounts`), Kroger its
   `atlas` purchase-history endpoints. Raw JSON is archived in `data/imports/`, so a changed
   field needs a re-normalize, not a re-scrape. `food import` is the escape hatch when a
   scraper breaks.
-- **Shelf life.** USDA FoodKeeper (public domain) is the reference table, but it is a *hint, not
-  the authority*: its figures can be unrealistic (a milk row listing only a freezer value), so
-  the model supplies the final number. `resolve.py` runs per chunk of items: `reference.py`
-  retrieves each item's shortlist with hybrid keyword + semantic search (RRF; embeddings from
-  OpenRouter), then (1) a tool-calling agent researches it — searching the web only where no row
-  fits — and (2) a forced structured-output call turns the notes into one verdict per item (the
-  schema is the only tool bound, so the model cannot answer in prose). Each product records
-  `shelf_life_source` (foodkeeper / web / llm); units are converted from FoodKeeper's `*_Metric`
-  (Weeks/Months/…), and qualitative values fall through to the model. The retriever alone is
-  benchmarked in `bench/retrieval_bench.py`.
-- **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` (won a head-to-head benchmark:
-  30/30 valid items in 52s vs 89s and 121s) with cheaper/free fallbacks. Batches run 6-wide.
-  Chat and digest are cached and budgeted separately so they can't starve classification.
+- **Shelf life.** USDA FoodKeeper is the reference table but only a *hint*: its figures can be
+  unrealistic, so the model supplies the final number. `resolve.py` runs per chunk:
+  `reference.py` retrieves a shortlist with hybrid keyword + semantic search (RRF; embeddings
+  from OpenRouter), then (1) a tool-calling agent researches it — searching the web only where
+  no row fits — and (2) a forced structured-output call produces one verdict per item. Each
+  product records `shelf_life_source` (`foodkeeper` / `web` / `llm` / `jev` / `user`).
+- **User overrides.** A value set with `shelf-life` (or the app's item page) is stored with
+  `source=user` and is sticky: automatic passes leave it alone, and future purchases inherit
+  it. `review` flags a product so the next resolve pass redoes it; a successful verdict clears
+  the flag. `--refresh` re-resolves every food item except pinned values unless flagged.
+- **Costs.** Classification runs on `xiaomi/mimo-v2.6-flash` with cheaper/free fallbacks.
+  Batches run 6-wide. Chat and digest are cached and budgeted separately so they can't starve
+  classification.
 - **LLM plumbing.** Built on LangChain: each model is a `ChatOpenAI` runnable wrapped with
   `.with_retry` and chained with `.with_fallbacks`, classification batches fan out through
   `.batch(max_concurrency=…)`, FoodKeeper retrieval is an `EnsembleRetriever` (lexical +
   embeddings), and the resolver's synthesis step uses `with_structured_output`.
-- **Consumption.** Receipts say what you bought, not what's left. Inventory decays: rows
-  expire at `acquired_on + shelf_life_days`, repeat purchases decrement oldest-first, and
-  long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it
-  honest.
+- **Consumption.** Receipts say what you bought, not what's left. Rows expire at
+  `acquired_on + shelf_life_days`, repeat purchases consume oldest-first, and long-dead rows
+  archive automatically. Mark items used/tossed from the dashboard to keep it honest.
 
-## Client-assisted ingest (mobile POC)
+## Mobile app (macOS / iOS)
 
-Akamai doesn't only guard the *login* — it guards the *fetch*. Measured against the real
-endpoints, no headless HTTP client gets through Kroger's `purchase-history/v2/details`:
-`curl_cffi` (even with a Chrome TLS/JA3 + HTTP/2 fingerprint) has its HTTP/2 stream **reset**,
-and `node-libcurl` (with an explicit Akamai HTTP/2 fingerprint) fails in the framing layer —
-while the *very same request* from a real WebKit engine returns **200**. Akamai validates its
-`_abck` bot cookie against the browser's fingerprint, which no non-browser client reproduces.
+`mobile/ios/` is a native SwiftUI app that runs the whole pipeline on-device — no server.
 
-So the portable answer is to move the browser engine to the **client** and keep the server
-browser-free: the phone logs in and fetches, and hands the server raw payloads that the
-existing `food import` consumes unchanged.
-
-`mobile/ios/` is a SwiftUI POC that does exactly this. Its in-app `WKWebView` (a real WebKit
-engine, the same reason Google and Meta ship their own in-app browser) fetches the full
-history, then:
+- The in-app `WKWebView` logs into the retailer and fetches receipts from inside the page, then
+  hands the raw payloads to `FoodCore`. Same-origin fetch is what keeps the authenticated
+  session intact.
+- **Kitchen** leads with *Use soon*, then one section per shelf; rows show quantity and a
+  relative date, with used/tossed swipe actions and an item detail (shelf life, source, price
+  history, stock).
+- **Shelf life** on the item detail has a day stepper, **Save shelf life** (pins the value) and
+  **Mark as wrong** (queues a re-resolve). The Kitchen gains a **Needs review** section with a
+  single **Re-resolve N flagged items** action.
+- **Sync receipts** opens the browser; **Import…** accepts an archived payload for offline
+  reproduction (e.g. a file from `data/receipts/`).
 
 ```bash
-uv run food import kroger-raw.json --retailer kroger   # → 123 receipts, 1026 items
-uv run food import costco-raw.json --retailer costco   # →   4 receipts,   46 items
+cd mobile/ios
+./run-mac.sh    # native macOS app
+./run.sh        # boot a simulator first; builds, installs, launches
 ```
 
-One quirk worth knowing: the details endpoint allows only ~1 batch per **page load** before it
-drops connections, and retries don't recover it — the app itemizes in chunks, reloading the
-page between them to re-arm the sensor (`loads=13 detailsOk=13 errors=0`). See
-[`mobile/ios/README.md`](mobile/ios/README.md); the same design ports to Android WebView.
+See [`mobile/ios/README.md`](mobile/ios/README.md) for build details, keys and visual checks.
 
 ## Privacy
 
