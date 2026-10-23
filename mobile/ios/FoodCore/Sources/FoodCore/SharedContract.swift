@@ -52,10 +52,10 @@ public struct SharedConfig: Decodable, Sendable {
 
 public enum SharedContract {
     private static func data(_ name: String, ext: String, subdirectory: String? = nil) -> Data? {
-        // `.copy("Resources")` preserves the directory in the bundle.
-        let sub = subdirectory.map { "Resources/\($0)" } ?? "Resources"
-        return Bundle.module
-            .url(forResource: name, withExtension: ext, subdirectory: sub)
+        // `.process("Resources")` flattens the resources into the bundle root. A bundle
+        // with a top-level `Resources` directory is rejected by codesign on device builds.
+        Bundle.module
+            .url(forResource: name, withExtension: ext, subdirectory: subdirectory)
             .flatMap { try? Data(contentsOf: $0) }
     }
 
@@ -97,6 +97,6 @@ public enum SharedContract {
     }()
 
     public static func fixtureData(_ name: String) -> Data? {
-        data(name, ext: "json", subdirectory: "fixtures")
+        data(name, ext: "json")
     }
 }

@@ -17,6 +17,8 @@ struct CLIError: Error, CustomStringConvertible {
 @main
 struct CLI {
     static func main() async {
+        Tracing.start()
+        defer { Tracing.shutdown() }
         do {
             try await run(Array(CommandLine.arguments.dropFirst()))
         } catch {

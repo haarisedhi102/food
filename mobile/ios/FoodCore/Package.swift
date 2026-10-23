@@ -28,7 +28,7 @@ let package = Package(
         .target(
             name: "FoodCore",
             dependencies: ["RigPocKit", "RigPoc"],
-            resources: [.copy("Resources")]
+            resources: [.process("Resources")]
         ),
         .executableTarget(name: "foodcore-cli", dependencies: ["FoodCore"], path: "Sources/foodcore-cli"),
         .testTarget(

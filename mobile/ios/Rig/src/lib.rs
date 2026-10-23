@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::KeyValue;
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
@@ -314,6 +315,10 @@ pub fn init_tracing() {
 }
 
 fn otlp_provider(endpoint: &str, service_name: &str) -> Result<SdkTracerProvider, String> {
+    let project = std::env::var("PHOENIX_PROJECT")
+        .ok()
+        .filter(|project| !project.trim().is_empty())
+        .unwrap_or_else(|| "food".into());
     let exporter = SpanExporter::builder()
         .with_http()
         .with_endpoint(endpoint)
@@ -323,7 +328,13 @@ fn otlp_provider(endpoint: &str, service_name: &str) -> Result<SdkTracerProvider
         // Export on span end. This avoids needing a Tokio reactor on the batch thread and
         // guarantees a short-lived process flushes before exit.
         .with_simple_exporter(exporter)
-        .with_resource(Resource::builder().with_service_name(service_name.to_string()).build())
+        .with_resource(
+            Resource::builder()
+                .with_service_name(service_name.to_string())
+                // Phoenix groups traces by this attribute; match the Python pipeline's project.
+                .with_attribute(KeyValue::new("openinference.project.name", project))
+                .build(),
+        )
         .build())
 }
 

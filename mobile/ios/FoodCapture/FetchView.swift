@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The receipt-syncing surface, reached from Settings rather than living in the tab bar
 /// ("a tab bar is for navigation, not actions"). Log into a retailer in the in-app browser,
@@ -15,6 +16,7 @@ struct SyncSheet: View {
     @State private var errorMessage: String?
     @State private var pendingPayload: String?
     @State private var pendingRetailer: String?
+    @State private var showImporter = false
 
     var body: some View {
         NavigationStack {
@@ -67,6 +69,11 @@ struct SyncSheet: View {
         #endif
         .sheet(isPresented: $showExport) {
             ExportSheet(text: exportText, url: exportURL, storageKeys: storageKeys)
+        }
+        .fileImporter(
+            isPresented: $showImporter, allowedContentTypes: [.json], allowsMultipleSelection: false
+        ) { result in
+            importPayload(result)
         }
         .onAppear { model.load() }
         .alert(
@@ -146,11 +153,53 @@ struct SyncSheet: View {
         }
     }
 
+    /// Stage an already-captured payload (e.g. `data/imports/kroger-*.json`) so the on-device
+    /// pipeline can run without touching the retailer. `food import` is the Python equivalent.
+    private func importPayload(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let data = try Data(contentsOf: url)
+            guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let text = String(data: data, encoding: .utf8) else {
+                errorMessage = "That file is not a JSON receipt payload."
+                return
+            }
+            guard let retailer = Self.detectRetailer(object, filename: url.lastPathComponent) else {
+                errorMessage = "Could not tell whether that file is Kroger or Costco."
+                return
+            }
+            pendingPayload = text
+            pendingRetailer = retailer
+            model.retailer = Retailer(rawValue: retailer) ?? .kroger
+            model.progress = "Imported \(url.lastPathComponent) (\(data.count) bytes) as "
+                + "\(model.retailer.title). Tap Sync."
+            print("[import] \(url.lastPathComponent) retailer=\(retailer) bytes=\(data.count)")
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Archived payloads are self-describing: Kroger stores `{search, details}`, Costco keeps
+    /// the raw GraphQL envelope (`data.receiptsWithCounts`). Filenames are the fallback.
+    private static func detectRetailer(_ object: [String: Any], filename: String) -> String? {
+        let name = filename.lowercased()
+        if name.contains("kroger") { return "kroger" }
+        if name.contains("costco") { return "costco" }
+        if object["search"] != nil, object["details"] != nil { return "kroger" }
+        if let data = object["data"] as? [String: Any],
+           data["receiptsWithCounts"] != nil { return "costco" }
+        return nil
+    }
+
     @ViewBuilder
     private var actionButtons: some View {
         Button("Probe") { Task { await probe() } }
             .disabled(model.isBusy)
         Button("Fetch") { Task { await fetch() } }
+            .disabled(model.isBusy)
+        Button("Import…") { showImporter = true }
             .disabled(model.isBusy)
         Spacer()
         if pendingPayload != nil {

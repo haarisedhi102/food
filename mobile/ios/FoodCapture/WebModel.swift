@@ -140,8 +140,18 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
         // 1. page the search once, on a freshly-armed page
         await navigate(to: fetchPageURL)
         try? await Task.sleep(nanoseconds: 2_500_000_000)
-        guard let sraw = await runScript(Self.krogerSearchScript),
-              let search = decodeJSON(sraw)["search"] as? [[String: Any]] else {
+        guard let sraw = await runScript(Self.krogerSearchScript) else {
+            return ("search failed", "{}", false)
+        }
+        let searchBody = decodeJSON(sraw)
+        if searchBody["rateLimited"] as? Bool == true {
+            return (
+                "Kroger is rate-limiting this IP (429). Stopped — wait for the window to "
+                    + "clear before syncing again.",
+                "{}", false
+            )
+        }
+        guard let search = searchBody["search"] as? [[String: Any]] else {
             return ("search failed", "{}", false)
         }
         let groceryKeys = search.compactMap { row -> String? in
@@ -162,6 +172,7 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
         // 2. itemize in chunks, reloading the page between them to re-arm the sensor
         var details: [String: Any] = [:]
         var ok = 0, errors = 0, retries = 0, loads = 0
+        var rateLimited = false
         var index = 0
         while index < keys.count {
             let chunk = Array(keys[index ..< min(index + Self.receiptsPerLoad, keys.count)])
@@ -177,6 +188,11 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
                 if let d = obj["details"] as? [String: Any] {
                     details.merge(d) { _, new in new }
                 }
+                // A 429 is terminal: reloading and continuing only extends Akamai's block.
+                if counts["rateLimited"] as? Bool == true {
+                    rateLimited = true
+                    break
+                }
             } else {
                 errors += chunk.count
             }
@@ -185,12 +201,10 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
 
         let payload: [String: Any] = ["search": search, "details": details]
         let pjson = encodeJSON(payload) ?? "{}"
-        return (
-            "search=\(search.count) keys=\(groceryKeys.count) new=\(keys.count) "
-                + "loads=\(loads) detailsOk=\(ok) errors=\(errors) retries=\(retries)",
-            pjson,
-            true
-        )
+        let summary = "search=\(search.count) keys=\(groceryKeys.count) new=\(keys.count) "
+            + "loads=\(loads) detailsOk=\(ok) errors=\(errors) retries=\(retries)"
+            + (rateLimited ? " rateLimited=true (stopped)" : "")
+        return (summary, pjson, !rateLimited)
     }
 
     private func fetchCostco(since: String?) async -> (summary: String, json: String, ok: Bool) {
@@ -238,15 +252,18 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const H = {'X-Kroger-Channel':'WEB','Accept':'application/json'};
     const search = [];
+    let rateLimited = false;
     for (let page = 1; page <= 30; page++) {
       let j = null;
       for (let a = 0; a < 3 && j === null; a++) {
         try {
           const r = await fetch(`https://www.kroger.com/atlas/v1/post-order/v1/purchase-history-search?pageNo=${page}&pageSize=50`,
                                 {credentials:'include', headers:H});
+          if (r.status === 429 || r.status === 403) { rateLimited = true; break; }
           j = await r.json();
         } catch (e) { if (a < 2) await sleep(600 * (a + 1)); }
       }
+      if (rateLimited) break;
       if (j === null) break;
       const node = ((j.data||{}).postOrderSearch)||{};
       const recs = node.data||[];
@@ -254,14 +271,14 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
       if (node.isLastPage || recs.length === 0) break;
       await sleep(250);
     }
-    return JSON.stringify({search});
+    return JSON.stringify({search, rateLimited});
     """
 
     /// Itemize one chunk of receipts; `keys` is injected as an argument by the caller.
     private static let krogerDetailsScript = """
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const details = {};
-    let ok = 0, errors = 0, retries = 0;
+    let ok = 0, errors = 0, retries = 0, rateLimited = false;
     for (let i = 0; i < keys.length; i += 10) {
       const batch = keys.slice(i, i + 10);
       const vars = batch.map(k => { const p = String(k).split('~');
@@ -276,17 +293,25 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
           const text = await dr.text();
           let json = null; try { json = JSON.parse(text); } catch (e) {}
           res = {status: dr.status, ok: dr.ok, json, text};
-          if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 429)) break;
+          // 429/403 (or an Akamai "Too many requests" body) is terminal: retrying extends
+          // the block, and reloading the SPA does not clear it.
+          const blocked = dr.status === 429 || dr.status === 403
+            || /too many requests|rate limit|throttled|try again later/i.test(text);
+          if (blocked) { rateLimited = true; break; }
+          if (res.ok || (dr.status >= 400 && dr.status < 500)) break;
         } catch (e) {
           res = {status: -1, ok: false, json: null, text: String(e)};
         }
         if (a < 2) { retries++; await sleep(1500 * (a + 1)); }
       }
-      if (res.ok) ok++; else errors++;
-      batch.forEach(k => { details[k] = res; });
+      if (res) {
+        if (res.ok) ok++; else errors++;
+        batch.forEach(k => { details[k] = res; });
+      }
+      if (rateLimited) break;
       await sleep(300);
     }
-    return JSON.stringify({counts:{ok, errors, retries}, details});
+    return JSON.stringify({counts:{ok, errors, retries, rateLimited}, details});
     """
 
     /// Reproduce `costco.pull`'s GraphQL call inside the page.
