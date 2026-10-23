@@ -55,6 +55,22 @@ final class ShelfLifeOverrideTests: XCTestCase {
         XCTAssertEqual(p["needs_review"]?.intValue, 0)
     }
 
+    func testInitDBBackfillsReviewColumn() throws {
+        let d = try db()
+        try d.run("ALTER TABLE products DROP COLUMN needs_review")
+        XCTAssertFalse(
+            try d.query("PRAGMA table_info(products)")
+                .contains { $0["name"]?.stringValue == "needs_review" }
+        )
+
+        try Schema.initDB(d)
+
+        XCTAssertTrue(
+            try d.query("PRAGMA table_info(products)")
+                .contains { $0["name"]?.stringValue == "needs_review" }
+        )
+    }
+
     func testApplySkipsAnUnflaggedUserValue() throws {
         let d = try db()
         let pid = try product(d)

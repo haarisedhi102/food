@@ -72,6 +72,13 @@ The app initializes Rig's OpenTelemetry exporter at launch. A Debug build sends 
 `openinference.project.name` from `PHOENIX_PROJECT` (default `food`), so they land beside the
 Python traces. A physical device needs your Mac's LAN address instead of `127.0.0.1`.
 
+### Diagnostics
+
+**Settings → Diagnostics → Export logs** shares `Application Support/food.log`. It captures
+stdout and stderr for the whole process — Swift logs, Rig/Rust transport errors, and tracing
+output — plus a header with the app/OS version, DB path, and provider configuration (keys are
+reported as set/missing, never printed). Debug builds still mirror to the Xcode console.
+
 ### Visual checks
 
 Launch-time hooks make screenshots scriptable without tapping:

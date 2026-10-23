@@ -25,6 +25,11 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    # CREATE TABLE IF NOT EXISTS never adds columns, so databases created by an older build
+    # need newer columns added explicitly.
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(products)")}
+    if "needs_review" not in columns:
+        conn.execute("ALTER TABLE products ADD COLUMN needs_review INTEGER NOT NULL DEFAULT 0")
     row = conn.execute("SELECT version FROM schema_version").fetchone()
     if row is None:
         conn.execute("INSERT INTO schema_version (version) VALUES (2)")

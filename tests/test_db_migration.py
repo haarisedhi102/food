@@ -32,3 +32,14 @@ def test_fresh_schema_has_review_column():
     assert cols["needs_review"]["notnull"] == 1
     assert cols["needs_review"]["dflt_value"] == "0"
 
+
+def test_init_db_backfills_review_column_on_a_legacy_db():
+    conn = _mem()
+    db.init_db(conn)
+    conn.execute("ALTER TABLE products DROP COLUMN needs_review")
+    assert "needs_review" not in {r["name"] for r in conn.execute("PRAGMA table_info(products)")}
+
+    db.init_db(conn)
+
+    assert "needs_review" in {r["name"] for r in conn.execute("PRAGMA table_info(products)")}
+

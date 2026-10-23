@@ -84,6 +84,18 @@ struct SettingsView: View {
                 }
                 #endif
                 Section {
+                    if let logURL = AppLog.url {
+                        ShareLink(item: logURL) {
+                            Label("Export logs", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("App/OS version, provider configuration (keys redacted) and recent run "
+                        + "output, including Rust transport errors.")
+                }
+                Section {
                     Button("Save") {
                         Settings.save(
                             apiKey: apiKey, baseURL: baseURL, model: model,
