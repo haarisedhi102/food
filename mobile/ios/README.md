@@ -38,7 +38,9 @@ Two tabs, all backed by `FoodCore`:
   **Show N more**. Rows show the product name, brand (when it adds something), quantity and a
   relative date; swipe for **Used** / **Tossed**, tap for the item detail. Search filters every
   shelf by name, brand or category. When products are flagged, a **Needs review** section at
-  the top offers one **Re-resolve N flagged items** action.
+  the top offers one **Re-resolve N flagged items** action. Rows past their expiry stay visible
+  in an **Expired** section (swipe to clear them) until they archive automatically 14 days
+  later; archived rows live behind **Show archived**.
 - **Settings** — provider API key, base URL, model, optional embeddings, **Sync receipts**
   (the in-app browser + Fetch/Import + Sync), and **Retry pending** when receipt lines are
   unmapped or still carry raw receipt text.

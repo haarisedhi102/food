@@ -90,6 +90,9 @@ def index(request: Request, archived: int = 0, q: str = "", show: str = ""):
     soon = inventory.expiring_soon(conn, days=USE_SOON_DAYS)
     for r in soon:
         r["days_left"] = _days_left(r["expires_on"])
+    expired = [r for r in inventory.active(conn) if r["status"] == "expired"]
+    for r in expired:
+        r["days_left"] = _days_left(r["expires_on"])
     extra = inventory.active(conn, include_archived=True) if archived else []
     conn.close()
 
@@ -147,6 +150,7 @@ def index(request: Request, archived: int = 0, q: str = "", show: str = ""):
             "hide_links": hide_links,
             "archived": bool(archived),
             "archived_rows": [r for r in extra if r["status"] == "archived"][:100],
+            "expired": expired[:100],
             "today": date.today().isoformat(),
             "q": q,
             "results": results,

@@ -19,6 +19,9 @@ final class AppModel: ObservableObject {
     @Published var shelves: [(String, [ItemRow])] = []
     @Published var expiring: [ItemRow] = []
     @Published var archivedRows: [ItemRow] = []
+    /// Rows past their expiry that have not archived yet. Kept visible so they can be
+    /// tossed or marked used instead of silently disappearing.
+    @Published var expiredRows: [ItemRow] = []
     @Published var showArchived = false
     @Published var isBusy = false
     @Published var message = ""
@@ -89,9 +92,10 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() {
-        // Mirrors `_shelves` in food/web/app.py: expired rows are not shown on a shelf.
-        let active = ((try? Inventory.active(db)) ?? [])
-            .filter { $0["status"]?.stringValue != "expired" }
+        // Mirrors `_shelves` in food/web/app.py: expired rows are not shown on a shelf, but
+        // they stay available in their own section until they archive.
+        let rows = (try? Inventory.active(db)) ?? []
+        let active = rows.filter { $0["status"]?.stringValue != "expired" }
         var grouped: [String: [ItemRow]] = [:]
         for row in active {
             let item = ItemRow(row)
@@ -117,6 +121,10 @@ final class AppModel: ObservableObject {
         } else {
             archivedRows = []
         }
+        expiredRows = rows
+            .filter { $0["status"]?.stringValue == "expired" }
+            .prefix(100)
+            .map(ItemRow.init)
         repairCount = (try? Canonicalize.repairableCount(db)) ?? 0
         flaggedCount = (try? ShelfLifeAgent.reviewCount(db)) ?? 0
     }

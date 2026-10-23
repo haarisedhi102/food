@@ -24,6 +24,7 @@ struct KitchenView: View {
                     ForEach(app.shelves, id: \.0) { location, items in
                         shelfSection(location, items)
                     }
+                    expiredSection
                     archivedSection
                 }
             }
@@ -177,6 +178,22 @@ struct KitchenView: View {
             }
         } header: {
             Text("\(results.count) \(results.count == 1 ? "match" : "matches")")
+        }
+    }
+
+    @ViewBuilder
+    private var expiredSection: some View {
+        if !app.expiredRows.isEmpty {
+            Section {
+                ForEach(app.expiredRows) { item in
+                    itemRow(item)
+                }
+            } header: {
+                Label("Expired", systemImage: "clock.badge.exclamationmark")
+            } footer: {
+                Text("Past their shelf life. Swipe to toss or mark used; they archive "
+                    + "automatically after 14 days.")
+            }
         }
     }
 
