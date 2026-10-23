@@ -39,10 +39,11 @@ CREATE TABLE IF NOT EXISTS products (
     storage                  TEXT,
     shelf_life_days          INTEGER,
     shelf_life_days_opened   INTEGER,
-    shelf_life_source        TEXT,          -- foodkeeper | web | llm
+    shelf_life_source        TEXT,          -- foodkeeper | web | llm | jev | user
     llm_model                TEXT,
     llm_confidence           REAL,
-    classified_at            TEXT
+    classified_at            TEXT,
+    needs_review             INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS item_map (

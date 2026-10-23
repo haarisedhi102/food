@@ -212,8 +212,8 @@ def _warn_if_lexical(conn) -> None:
 
 
 def _run_classify(conn, limit: int | None = None) -> dict:
-    """Canonicalize pending items and resolve each item's shelf life, in one pass."""
-    from . import canonicalize, llm
+    """Canonicalize pending items, resolve their shelf life, then pick up gaps and flags."""
+    from . import canonicalize, llm, resolve
 
     if not conn.execute("SELECT 1 FROM shelf_life_ref LIMIT 1").fetchone():
         console.print(
@@ -226,6 +226,12 @@ def _run_classify(conn, limit: int | None = None) -> dict:
     except llm.LLMError as e:
         console.print(f"[red]{e}[/]")
         raise typer.Exit(1)
+    # Existing rows can still need work even when nothing new was classified: a gap left by
+    # a failed chunk, or a product the user marked wrong. This is what makes "the next
+    # refresh fixes it" true for flagged products.
+    pending = resolve.pending(conn, limit=limit)
+    if pending:
+        stats["resolved"] += resolve.apply(conn, pending, resolve.resolve_batch(conn, pending))
     console.print(
         f"[green]canonicalized[/] {stats['ok']} items "
         f"({stats['batches']} batches, {stats['fallback']} unparsed); "
@@ -247,7 +253,11 @@ def resolve_command(
     refresh: bool = typer.Option(
         False, "--refresh", help="Re-resolve every food item, including ones that already have a shelf life"
     ),
-    ids: Optional[str] = typer.Option(None, help="Comma-separated product ids to limit to"),
+    ids: Optional[str] = typer.Option(
+        None,
+        help="Comma-separated product ids. Pinned user values are skipped; "
+        "run `food review <id>` first to replace one.",
+    ),
     limit: Optional[int] = typer.Option(None, help="Max items to resolve"),
 ) -> None:
     """(Re)resolve shelf lives for stored products — fill gaps, or refresh the whole catalogue."""
@@ -255,20 +265,8 @@ def resolve_command(
 
     conn = _conn()
     _warn_if_lexical(conn)
-    sql = "SELECT id, canonical_name AS name, category, storage FROM products WHERE is_food = 1"
-    params: list = []
-    if ids:
-        selected = [int(x) for x in ids.split(",") if x.strip()]
-        sql += f" AND id IN ({','.join('?' * len(selected))})"
-        params += selected
-    elif not refresh:
-        # default: only the gaps — perishable-looking food that never got a shelf life
-        sql += " AND shelf_life_days IS NULL AND (is_perishable = 1 OR storage IN ('fridge','freezer'))"
-    sql += " ORDER BY id"
-    if limit:
-        sql += f" LIMIT {int(limit)}"
-
-    items = [dict(r) for r in conn.execute(sql, params)]
+    selected = [int(x) for x in ids.split(",") if x.strip()] if ids else None
+    items = resolver.pending(conn, refresh=refresh, ids=selected, limit=limit)
     if not items:
         console.print("nothing to resolve")
         conn.close()
@@ -276,6 +274,50 @@ def resolve_command(
     applied = resolver.apply(conn, items, resolver.resolve_batch(conn, items))
     conn.close()
     console.print(f"[green]resolved[/] {applied} of {len(items)} items")
+
+
+@app.command("shelf-life")
+def shelf_life_command(
+    product_id: int,
+    days: int = typer.Option(..., "--days", min=1, max=3650, help="Shelf life in days"),
+    opened: Optional[int] = typer.Option(
+        None, "--opened", min=0, help="Days after opening (optional)"
+    ),
+) -> None:
+    """Pin a shelf life for one product; it applies to every future purchase."""
+    from . import inventory, resolve
+
+    conn = _conn()
+    applied = resolve.set_user_shelf_life(conn, product_id, days, opened)
+    inventory.refresh_status(conn)
+    conn.close()
+    if applied:
+        console.print(f"[green]shelf life[/] product {product_id} = {days} days")
+    else:
+        console.print(f"[red]no product[/] {product_id}")
+        raise typer.Exit(1)
+
+
+@app.command("review")
+def review_command(
+    product_id: int,
+    clear: bool = typer.Option(False, "--clear", help="Clear the review flag"),
+) -> None:
+    """Flag a product for re-resolution on the next refresh, or clear the flag."""
+    from . import resolve
+
+    conn = _conn()
+    changed = (
+        resolve.clear_review(conn, product_id)
+        if clear
+        else resolve.flag_for_review(conn, product_id)
+    )
+    conn.close()
+    if not changed:
+        console.print(f"[red]no product[/] {product_id}")
+        raise typer.Exit(1)
+    state = "cleared" if clear else "flagged"
+    console.print(f"[green]review[/] product {product_id} {state}")
 
 
 def _run_stock(conn, show_archived: bool = False) -> None:

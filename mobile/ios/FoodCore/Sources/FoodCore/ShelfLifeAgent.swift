@@ -242,14 +242,26 @@ public enum ShelfLifeAgent {
         embedModel: String? = nil,
         jev: JevProvider? = nil,
         topn: Int = 5,
+        refresh: Bool = false,
         search: @escaping Search = { await WebSearch.duckDuckGo($0) },
         progress: (@Sendable (String) -> Void)? = nil
     ) async throws -> Stats {
+        let selection = refresh
+            ? """
+              is_food = 1
+              AND (COALESCE(shelf_life_source, '') <> 'user' OR needs_review = 1)
+              """
+            : """
+              is_food = 1
+              AND (
+                (shelf_life_days IS NULL AND (is_perishable = 1 OR storage IN ('fridge', 'freezer')))
+                OR needs_review = 1
+              )
+              """
         var sql = """
         SELECT id, canonical_name AS name, category, storage FROM products
-        WHERE is_food = 1 AND shelf_life_days IS NULL
-          AND (is_perishable = 1 OR storage IN ('fridge', 'freezer'))
-        ORDER BY id
+        WHERE \(selection)
+        ORDER BY needs_review DESC, id
         """
         if let limit = limit { sql += " LIMIT \(limit)" }
         let rows = try db.query(sql)
@@ -267,6 +279,51 @@ public enum ShelfLifeAgent {
             db, items: items, provider: provider, embedModel: embedModel,
             jev: jev, topn: topn, search: search, progress: progress
         )
+    }
+
+    // MARK: - User overrides
+
+    /// Store a value the user set by hand. It is deliberately `source: "user"`: the resolver
+    /// will not overwrite it on the next run unless the user marks the product for review.
+    /// Returns the number of changed product rows (0 if the product no longer exists).
+    @discardableResult
+    public static func setUserShelfLife(
+        _ db: Database, productID: Int, days: Int, openedDays: Int? = nil
+    ) throws -> Int {
+        let clamped = min(max(days, 1), 3650)
+        let rows = try db.query(
+            "SELECT storage FROM products WHERE id = ?", [.int(Int64(productID))]
+        )
+        guard let row = rows.first else { return 0 }
+        let verdict = ItemVerdict(
+            itemID: productID, source: "user", shelfLifeDays: clamped,
+            shelfLifeDaysOpened: openedDays, storage: row["storage"]?.stringValue,
+            isPerishable: true, confidence: 1.0
+        )
+        return try apply(
+            db, items: [["id": productID]], verdicts: [productID: verdict]
+        )
+    }
+
+    @discardableResult
+    public static func flagForReview(_ db: Database, productID: Int) throws -> Int {
+        try db.run(
+            "UPDATE products SET needs_review = 1 WHERE id = ?", [.int(Int64(productID))]
+        )
+    }
+
+    @discardableResult
+    public static func clearReview(_ db: Database, productID: Int) throws -> Int {
+        try db.run(
+            "UPDATE products SET needs_review = 0 WHERE id = ?", [.int(Int64(productID))]
+        )
+    }
+
+    /// Number of products the user marked wrong and that still await a verdict.
+    public static func reviewCount(_ db: Database) throws -> Int {
+        try db.query(
+            "SELECT COUNT(*) n FROM products WHERE needs_review = 1"
+        ).first?["n"]?.intValue ?? 0
     }
 
     // MARK: - One chunk
@@ -570,13 +627,18 @@ public enum ShelfLifeAgent {
         let wanted = Set(items.compactMap { $0["id"] as? Int })
         var applied = 0
         for (pid, v) in verdicts where wanted.contains(pid) {
-            try db.run(
+            let changed = try db.run(
                 """
                 UPDATE products
-                SET shelf_life_days = ?, shelf_life_days_opened = ?,
+                SET shelf_life_days = ?,
+                    shelf_life_days_opened = COALESCE(?, shelf_life_days_opened),
                     storage = COALESCE(?, storage), is_perishable = ?,
-                    shelf_life_source = ?, llm_confidence = ?
+                    shelf_life_source = ?, llm_confidence = ?,
+                    needs_review = 0
                 WHERE id = ?
+                  AND (? = 'user'
+                       OR COALESCE(shelf_life_source, '') <> 'user'
+                       OR needs_review = 1)
                 """,
                 [
                     v.shelfLifeDays.map { SQLValue.int(Int64($0)) } ?? .null,
@@ -586,8 +648,11 @@ public enum ShelfLifeAgent {
                     .text(v.source),
                     .double(v.confidence),
                     .int(Int64(pid)),
+                    .text(v.source),
                 ]
             )
+            guard changed > 0 else { continue }
+            applied += changed
             if let days = v.shelfLifeDays {
                 try db.run(
                     """
@@ -603,7 +668,6 @@ public enum ShelfLifeAgent {
                     [.int(Int64(pid))]
                 )
             }
-            applied += 1
         }
         return applied
     }

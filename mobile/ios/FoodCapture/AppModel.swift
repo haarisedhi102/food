@@ -30,6 +30,8 @@ final class AppModel: ObservableObject {
     @Published var syncToastFailed = false
     /// Receipt lines with no mapping plus products still named from raw receipt text.
     @Published var repairCount = 0
+    /// Products the user flagged as wrong; the next resolve pass picks them up.
+    @Published var flaggedCount = 0
     private var toastDismissal: Task<Void, Never>?
     /// Selected tab. A sync started from the browser sheet switches to Kitchen so the
     /// progress banner is visible.
@@ -116,6 +118,7 @@ final class AppModel: ObservableObject {
             archivedRows = []
         }
         repairCount = (try? Canonicalize.repairableCount(db)) ?? 0
+        flaggedCount = (try? ShelfLifeAgent.reviewCount(db)) ?? 0
     }
 
     func toggleArchived() {
@@ -252,6 +255,45 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Re-resolve products the user marked wrong (plus any remaining perishable gaps).
+    /// Resolve stage only: no canonicalization or fallback repair.
+    func resolveFlagged() async {
+        guard !isBusy, flaggedCount > 0 else { return }
+        selectedTab = 0
+        isBusy = true
+        syncStatus = "Re-resolving flagged items…"
+        print("[resolve] flagged=\(flaggedCount)")
+        beginExtendedExecution()
+        defer {
+            endExtendedExecution()
+            isBusy = false
+            syncStatus = ""
+        }
+        do {
+            let config = Settings.providerConfig()
+            let llm = provider
+            let jev: JevProvider? = config.jevEnabled && !config.apiKey.isEmpty
+                ? (llm as? JevProvider) : nil
+            let stats = try await ShelfLifeAgent.resolveMissing(
+                db, provider: llm,
+                embedModel: config.embeddingsConfigured ? config.embedModel : nil,
+                jev: jev, progress: progressReporter()
+            )
+            try? Inventory.refreshStatus(db)
+            refresh()
+
+            var text = "resolved \(stats.resolved) shelf lives"
+            if stats.unresolved > 0 { text += ", \(stats.unresolved) still unresolved" }
+            message = text
+            print("[resolve] \(text)")
+            showSyncToast(text, failed: false)
+        } catch {
+            message = "resolve failed: \(error)"
+            print("[resolve] failed: \(error)")
+            showSyncToast("Resolve failed", failed: true)
+        }
+    }
+
     private func progressReporter() -> @Sendable (String) -> Void {
         { [weak self] text in
             print("[sync] \(text)")
@@ -318,6 +360,25 @@ final class AppModel: ObservableObject {
 
     func setStatus(_ id: Int, _ status: String) {
         try? Inventory.setStatus(db, inventoryID: id, status: status)
+        refresh()
+    }
+
+    func setShelfLife(productID: Int, days: Int) {
+        let applied = (try? ShelfLifeAgent.setUserShelfLife(
+            db, productID: productID, days: days
+        )) ?? 0
+        message = applied > 0 ? "shelf life saved" : "could not save shelf life"
+        _ = try? Inventory.refreshStatus(db)
+        refresh()
+    }
+
+    func flagForReview(productID: Int) {
+        _ = try? ShelfLifeAgent.flagForReview(db, productID: productID)
+        refresh()
+    }
+
+    func clearReview(productID: Int) {
+        _ = try? ShelfLifeAgent.clearReview(db, productID: productID)
         refresh()
     }
 

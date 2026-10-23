@@ -8,11 +8,11 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .. import config, db, inventory, llm
+from .. import config, db, inventory, llm, resolve
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 TEMPLATES.env.globals["relative"] = lambda days: _relative(days)
@@ -160,6 +160,32 @@ def set_status(iid: int, status: str = Form(...)):
     inventory.set_status(conn, iid, status)
     conn.close()
     return RedirectResponse("/", status_code=303)
+
+
+@app.post("/item/{pid}/shelf-life")
+def set_shelf_life(pid: int, days: int = Form(...)):
+    if not 1 <= days <= 3650:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 3650")
+    conn = _conn()
+    applied = resolve.set_user_shelf_life(conn, pid, days)
+    inventory.refresh_status(conn)
+    conn.close()
+    if not applied:
+        raise HTTPException(status_code=404, detail="product not found")
+    return RedirectResponse(f"/item/{pid}", status_code=303)
+
+
+@app.post("/item/{pid}/review")
+def set_review(pid: int, clear: bool = Form(False)):
+    conn = _conn()
+    changed = (
+        resolve.clear_review(conn, pid) if clear else resolve.flag_for_review(conn, pid)
+    )
+    inventory.refresh_status(conn)
+    conn.close()
+    if not changed:
+        raise HTTPException(status_code=404, detail="product not found")
+    return RedirectResponse(f"/item/{pid}", status_code=303)
 
 
 @app.get("/item/{pid}")

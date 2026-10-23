@@ -19,6 +19,7 @@ struct KitchenView: View {
                 if app.isSearching {
                     searchSection
                 } else {
+                    reviewSection
                     expiringSection
                     ForEach(app.shelves, id: \.0) { location, items in
                         shelfSection(location, items)
@@ -76,6 +77,31 @@ struct KitchenView: View {
     }
 
     // MARK: - Sections
+
+    /// One action for everything the user marked wrong. Kept off Settings: this is a queue
+    /// of items that need work, so it belongs on the screen where the items live.
+    @ViewBuilder
+    private var reviewSection: some View {
+        if app.flaggedCount > 0 {
+            Section {
+                Button {
+                    Task { await app.resolveFlagged() }
+                } label: {
+                    Label(
+                        "Re-resolve \(app.flaggedCount) flagged "
+                            + (app.flaggedCount == 1 ? "item" : "items"),
+                        systemImage: "arrow.triangle.2.circlepath"
+                    )
+                }
+                .disabled(app.isBusy)
+            } header: {
+                Label("Needs review", systemImage: "exclamationmark.bubble")
+            } footer: {
+                Text("Shelf lives you marked wrong. Re-resolving asks the model again and "
+                    + "updates the expiry.")
+            }
+        }
+    }
 
     @ViewBuilder
     private var expiringSection: some View {
@@ -294,9 +320,13 @@ struct ItemDetailView: View {
     let item: ItemRow
     @EnvironmentObject var app: AppModel
     @Environment(\.dismiss) private var dismiss
+    @State private var draftDays = 7
 
     var body: some View {
         let product = item.productID.flatMap(app.product) ?? [:]
+        let stock = item.productID.map { app.stock($0) } ?? []
+        let freshExpiry = stock.first { $0["id"]?.intValue == item.id }?["expires_on"]?.stringValue
+        let daysLeft = Chat.daysLeft(freshExpiry) ?? item.daysLeft
         List {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
@@ -304,12 +334,15 @@ struct ItemDetailView: View {
                     Text(headerLine(product)).font(.subheadline).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 6) {
-                    ExpiryBadge(days: item.daysLeft)
+                    ExpiryBadge(days: daysLeft)
                     if let days = product["shelf_life_days"]?.intValue {
                         badge("shelf life ≈ \(days)d", color: .secondary)
                     }
                     if let source = product["shelf_life_source"]?.stringValue {
                         sourceBadge(source)
+                    }
+                    if product["needs_review"]?.intValue == 1 {
+                        badge("needs review", color: .orange)
                     }
                 }
                 if let fid = product["foodkeeper_id"]?.intValue {
@@ -328,12 +361,54 @@ struct ItemDetailView: View {
                 }
 
                 Section("Purchases & stock") {
-                    let stock = app.stock(productID)
                     if stock.isEmpty {
                         Text("Never stocked.").foregroundStyle(.secondary)
                     } else {
                         stockTable(stock)
                     }
+                }
+            }
+
+            if let productID = item.productID {
+                Section {
+                    HStack {
+                        Button {
+                            draftDays = max(1, draftDays - 1)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Fewer days")
+                        Spacer()
+                        Text("\(draftDays) days")
+                            .font(.headline)
+                            .monospacedDigit()
+                        Spacer()
+                        Button {
+                            draftDays = min(3650, draftDays + 1)
+                        } label: {
+                            Image(systemName: "plus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("More days")
+                    }
+                    Button("Save shelf life", systemImage: "checkmark.circle") {
+                        app.setShelfLife(productID: productID, days: draftDays)
+                    }
+                    if product["needs_review"]?.intValue == 1 {
+                        Button("Clear review", systemImage: "checkmark.seal") {
+                            app.clearReview(productID: productID)
+                        }
+                    } else {
+                        Button("Mark as wrong", systemImage: "exclamationmark.bubble") {
+                            app.flagForReview(productID: productID)
+                        }
+                    }
+                } header: {
+                    Text("Shelf life")
+                } footer: {
+                    Text("Your value is used for future purchases of this product. "
+                        + "Marking it wrong lets the next sync re-research it.")
                 }
             }
 
@@ -355,6 +430,11 @@ struct ItemDetailView: View {
             }
         }
         .navigationTitle(item.name)
+        .onAppear {
+            if let days = product["shelf_life_days"]?.intValue {
+                draftDays = min(max(days, 1), 3650)
+            }
+        }
     }
 
     private func headerLine(_ product: [String: SQLValue]) -> String {
@@ -375,8 +455,12 @@ struct ItemDetailView: View {
     }
 
     private func sourceBadge(_ source: String) -> some View {
-        let color: Color = source == "foodkeeper" ? .green : source == "llm" ? .indigo : .secondary
-        return Text("source: \(source)")
+        let color: Color = source == "foodkeeper" ? .green
+            : source == "llm" ? .indigo
+            : source == "user" ? .blue
+            : .secondary
+        let label = source == "user" ? "set by you" : "source: \(source)"
+        return Text(label)
             .font(.caption2).fontWeight(.medium)
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(color.opacity(0.15), in: Capsule())

@@ -50,7 +50,7 @@ class ItemVerdict(BaseModel):
     """One item's resolved shelf life."""
 
     item_id: int = Field(description="the item's id, echoed exactly")
-    source: Literal["foodkeeper", "web", "llm", "jev"] = "llm"
+    source: Literal["foodkeeper", "web", "llm", "jev", "user"] = "llm"
     shelf_life_days: int | None = Field(
         default=None, description="whole days; null when the item is non-perishable"
     )
@@ -550,8 +550,80 @@ def _synthesize(payload: list[dict], findings: str) -> BatchVerdict | None:
         return None
 
 
+def pending(
+    conn: sqlite3.Connection,
+    refresh: bool = False,
+    ids: list[int] | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """Products a resolve run should consider.
+
+    Default fills gaps and picks up anything flagged. ``refresh`` re-resolves every food
+    item except values the user pinned, unless that item is flagged. An explicit ``ids``
+    list narrows the candidates but never overrides a pinned value.
+    """
+    sql = "SELECT id, canonical_name AS name, category, storage FROM products WHERE is_food = 1"
+    params: list[int] = []
+    if ids is not None:
+        if ids:
+            sql += f" AND id IN ({','.join('?' * len(ids))})"
+            params += ids
+        else:
+            return []
+        sql += " AND (COALESCE(shelf_life_source, '') <> 'user' OR needs_review = 1)"
+    elif refresh:
+        sql += " AND (COALESCE(shelf_life_source, '') <> 'user' OR needs_review = 1)"
+    else:
+        sql += """
+          AND (
+            (shelf_life_days IS NULL AND (is_perishable = 1 OR storage IN ('fridge','freezer')))
+            OR needs_review = 1
+          )
+        """
+    sql += " ORDER BY needs_review DESC, id"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    return [dict(r) for r in conn.execute(sql, params)]
+
+
+def set_user_shelf_life(
+    conn: sqlite3.Connection, product_id: int, days: int, opened_days: int | None = None
+) -> int:
+    """Pin a shelf life the user chose. The resolver leaves it alone until it is flagged."""
+    row = conn.execute("SELECT storage FROM products WHERE id = ?", (product_id,)).fetchone()
+    if row is None:
+        return 0
+    days = max(1, min(3650, int(days)))
+    verdict = ItemVerdict(
+        item_id=product_id,
+        source="user",
+        shelf_life_days=days,
+        shelf_life_days_opened=opened_days,
+        storage=row["storage"],
+        is_perishable=True,
+        confidence=1.0,
+    )
+    return apply(conn, [{"id": product_id}], {product_id: verdict})
+
+
+def flag_for_review(conn: sqlite3.Connection, product_id: int) -> int:
+    cur = conn.execute("UPDATE products SET needs_review = 1 WHERE id = ?", (product_id,))
+    conn.commit()
+    return cur.rowcount
+
+
+def clear_review(conn: sqlite3.Connection, product_id: int) -> int:
+    cur = conn.execute("UPDATE products SET needs_review = 0 WHERE id = ?", (product_id,))
+    conn.commit()
+    return cur.rowcount
+
+
 def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemVerdict]) -> int:
-    """Write resolved shelf lives back to products, re-expirying any built inventory rows."""
+    """Write resolved shelf lives back to products, re-expirying any built inventory rows.
+
+    User values are sticky: only a ``user`` verdict or a flagged product may replace one.
+    The guard is in SQL so the returned count reflects rows actually written.
+    """
     by_id = {it["id"]: it for it in items}
     applied = 0
     for pid, v in verdicts.items():
@@ -559,12 +631,17 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemV
         if it is None:
             continue
         days = v.shelf_life_days
-        conn.execute(
+        cur = conn.execute(
             """UPDATE products
-               SET shelf_life_days = ?, shelf_life_days_opened = ?,
+               SET shelf_life_days = ?,
+                   shelf_life_days_opened = COALESCE(?, shelf_life_days_opened),
                    storage = COALESCE(?, storage), is_perishable = ?,
-                   shelf_life_source = ?, llm_confidence = ?
-               WHERE id = ?""",
+                   shelf_life_source = ?, llm_confidence = ?,
+                   needs_review = 0
+               WHERE id = ?
+                 AND (? = 'user'
+                      OR COALESCE(shelf_life_source, '') <> 'user'
+                      OR needs_review = 1)""",
             (
                 days,
                 v.shelf_life_days_opened,
@@ -573,8 +650,12 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemV
                 v.source,
                 v.confidence,
                 pid,
+                v.source,
             ),
         )
+        if cur.rowcount <= 0:
+            continue
+        applied += cur.rowcount
         if days is not None:
             conn.execute(
                 """UPDATE inventory SET expires_on = date(acquired_on, '+' || ? || ' days')
@@ -584,6 +665,5 @@ def apply(conn: sqlite3.Connection, items: list[dict], verdicts: dict[int, ItemV
         elif not v.is_perishable:
             # only a known non-perishable clears expiry; an unknown keeps what it had
             conn.execute("UPDATE inventory SET expires_on = NULL WHERE product_id = ?", (pid,))
-        applied += 1
     conn.commit()
     return applied

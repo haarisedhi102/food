@@ -21,12 +21,41 @@
       <span class="px-2 py-1 rounded
         {% if p.shelf_life_source == 'foodkeeper' %}bg-emerald-100 text-emerald-700
         {% elif p.shelf_life_source == 'llm' %}bg-indigo-100 text-indigo-700
+        {% elif p.shelf_life_source == 'user' %}bg-blue-100 text-blue-700
         {% else %}bg-slate-100{% endif %}">
-        source: {{ p.shelf_life_source }}
+        {% if p.shelf_life_source == 'user' %}set by you{% else %}source: {{ p.shelf_life_source }}{% endif %}
       </span>
+    {% endif %}
+    {% if p.needs_review %}
+      <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">needs review</span>
     {% endif %}
     <span class="px-2 py-1 rounded bg-slate-100">confidence {{ p.llm_confidence }}</span>
   </div>
+
+  <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+    <form method="post" action="/item/{{ p.id }}/shelf-life" class="flex items-center gap-2">
+      <label for="days" class="text-slate-500">Shelf life</label>
+      <input id="days" name="days" type="number" min="1" max="3650"
+             value="{{ p.shelf_life_days or 7 }}"
+             class="w-20 rounded border border-slate-300 px-2 py-1">
+      <span class="text-slate-500">days</span>
+      <button type="submit" class="rounded bg-slate-900 text-white px-3 py-1">Save</button>
+    </form>
+    {% if p.needs_review %}
+      <form method="post" action="/item/{{ p.id }}/review">
+        <input type="hidden" name="clear" value="true">
+        <button type="submit" class="rounded border border-slate-300 px-3 py-1">Clear review</button>
+      </form>
+    {% else %}
+      <form method="post" action="/item/{{ p.id }}/review">
+        <button type="submit" class="rounded border border-slate-300 px-3 py-1">Mark as wrong</button>
+      </form>
+    {% endif %}
+  </div>
+  <p class="mt-2 text-xs text-slate-500">
+    Your value is used for future purchases of this product. Marking it wrong lets the next
+    sync re-research it.
+  </p>
 
   <section class="mt-6 grid gap-6 lg:grid-cols-2">
     <div class="bg-white rounded-xl border border-slate-200 p-4">

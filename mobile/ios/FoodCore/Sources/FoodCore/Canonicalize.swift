@@ -60,7 +60,9 @@ public enum Canonicalize {
 
     /// Products created by the raw-text fallback (the model output never parsed). They keep
     /// the receipt description as the name and are marked by having no model/classification.
-    static let fallbackPredicate = "p.llm_model IS NULL AND p.classified_at IS NULL"
+    static let fallbackPredicate =
+        "p.llm_model IS NULL AND p.classified_at IS NULL "
+        + "AND COALESCE(p.shelf_life_source, '') <> 'user'"
 
     /// Unmapped receipt lines plus raw-name fallback products — everything a retry can fix.
     public static func repairableCount(_ db: Database) throws -> Int {
