@@ -1,0 +1,6 @@
+rust/target/
+swift/.build/
+swift/generated/
+swift/artifacts/
+swift/Sources/rig_pocFFI/include/
+swift/Sources/RigPoCKit/*.swift
