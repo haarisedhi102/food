@@ -1,10 +1,10 @@
 import Foundation
 
-/// The LLM seam. Concrete access lives in `MacPawProvider` (MacPaw/OpenAI); this file holds
-/// only the config, the protocol, and the small shared value types, so the pipeline depends on
-/// the interface rather than any client.
+/// The LLM seam. Concrete access lives in `RigProvider` (Rig/Rust); this file holds only the
+/// config, the protocol, and the small shared value types, so the pipeline depends on the
+/// interface rather than any client.
 
-public struct ProviderConfig: Sendable {
+public struct ProviderConfig: Sendable, Encodable {
     public var baseURL: String
     public var apiKey: String
     public var models: [String]
@@ -16,46 +16,47 @@ public struct ProviderConfig: Sendable {
     public var jevModel: String
     public var jevEnabled: Bool
     public var jevTimeout: Double
+    public var jevAPIKey: String?
     public var classifyWorkers: Int
     public var resolveWorkers: Int
     public var llmTimeout: Double
     public var llmMaxTokens: Int
 
-    public init(
-        baseURL: String = "https://api.commandcode.ai/provider/v1",
-        apiKey: String = "",
-        models: [String] = ["xiaomi/mimo-v2.6-flash"],
-        temperature: Double = 0.0,
-        embedBaseURL: String = "https://openrouter.ai/api/v1",
-        embedModel: String = "baai/bge-base-en-v1.5",
-        embedAPIKey: String = "",
-        jevBaseURL: String = SharedContract.config.jevBaseURL,
-        jevModel: String = SharedContract.config.jevModel,
-        jevEnabled: Bool = SharedContract.config.jevEnabled,
-        jevTimeout: Double = SharedContract.config.jevTimeoutS,
-        classifyWorkers: Int = SharedContract.config.classifyWorkers,
-        resolveWorkers: Int = SharedContract.config.resolveWorkers,
-        llmTimeout: Double = SharedContract.config.llmTimeoutS,
-        llmMaxTokens: Int = SharedContract.config.llmMaxTokens
-    ) {
-        self.baseURL = baseURL
-        self.apiKey = apiKey
-        self.models = models
-        self.temperature = temperature
-        self.embedBaseURL = embedBaseURL
-        self.embedModel = embedModel
-        self.embedAPIKey = embedAPIKey
-        self.jevBaseURL = jevBaseURL
-        self.jevModel = jevModel
-        self.jevEnabled = jevEnabled
-        self.jevTimeout = jevTimeout
-        self.classifyWorkers = classifyWorkers
-        self.resolveWorkers = resolveWorkers
-        self.llmTimeout = llmTimeout
-        self.llmMaxTokens = llmMaxTokens
+    public var embeddingsConfigured: Bool { !embedAPIKey.isEmpty }
+
+    /// Wire shape consumed by `RigConfig` in `mobile/ios/Rig/src/lib.rs`.
+    enum CodingKeys: String, CodingKey {
+        case baseURL = "base_url"
+        case apiKey = "api_key"
+        case model
+        case maxTokens = "max_tokens"
+        case timeoutS = "timeout_s"
+        case embedBaseURL = "embed_base_url"
+        case embedAPIKey = "embed_api_key"
+        case embedModel = "embed_model"
+        case jevBaseURL = "jev_base_url"
+        case jevEnabled = "jev_enabled"
+        case jevModel = "jev_model"
+        case jevTimeoutS = "jev_timeout_s"
+        case jevAPIKey = "jev_api_key"
     }
 
-    public var embeddingsConfigured: Bool { !embedAPIKey.isEmpty }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encode(apiKey, forKey: .apiKey)
+        try container.encode(models.first ?? "", forKey: .model)
+        try container.encode(llmMaxTokens, forKey: .maxTokens)
+        try container.encode(llmTimeout, forKey: .timeoutS)
+        try container.encode(embedBaseURL, forKey: .embedBaseURL)
+        try container.encode(embedAPIKey, forKey: .embedAPIKey)
+        try container.encode(embedModel, forKey: .embedModel)
+        try container.encode(jevBaseURL, forKey: .jevBaseURL)
+        try container.encode(jevEnabled, forKey: .jevEnabled)
+        try container.encode(jevModel, forKey: .jevModel)
+        try container.encode(jevTimeout, forKey: .jevTimeoutS)
+        try container.encodeIfPresent(jevAPIKey, forKey: .jevAPIKey)
+    }
 
     /// Mirrors `food/config.py`'s env names. Optionally reads a `.env` file first (real env wins,
     /// like python-dotenv).
@@ -81,6 +82,7 @@ public struct ProviderConfig: Sendable {
             baseURL: env["FOOD_BASE_URL"] ?? "https://api.commandcode.ai/provider/v1",
             apiKey: env["CMD_API_KEY"] ?? "",
             models: [env["FOOD_MODEL"] ?? "xiaomi/mimo-v2.6-flash"] + fallbacks,
+            temperature: 0.0,
             embedBaseURL: env["FOOD_EMBED_BASE_URL"] ?? "https://openrouter.ai/api/v1",
             embedModel: env["FOOD_EMBED_MODEL"] ?? "baai/bge-base-en-v1.5",
             embedAPIKey: env["OPENROUTER_API_KEY"] ?? "",
@@ -89,6 +91,7 @@ public struct ProviderConfig: Sendable {
             jevEnabled: jevEnabled,
             jevTimeout: Double(env["FOOD_JEV_TIMEOUT_S"] ?? "")
                 ?? SharedContract.config.jevTimeoutS,
+            jevAPIKey: env["JEV_TOKEN"],
             classifyWorkers: Int(env["FOOD_CLASSIFY_WORKERS"] ?? "")
                 ?? SharedContract.config.classifyWorkers,
             resolveWorkers: Int(env["FOOD_RESOLVE_WORKERS"] ?? "")
@@ -103,13 +106,11 @@ public struct ProviderConfig: Sendable {
 
 public enum LLMError: Error, CustomStringConvertible {
     case notConfigured(String)
-    case allModelsFailed([String], String)
     case badResponse(String)
 
     public var description: String {
         switch self {
         case .notConfigured(let m): return m
-        case .allModelsFailed(let models, let detail): return "all models failed (\(models)): \(detail)"
         case .badResponse(let m): return "bad response: \(m)"
         }
     }
@@ -138,8 +139,7 @@ public protocol LLMProvider {
     var config: ProviderConfig { get }
     func chatJSON(system: String, user: String, temperature: Double) async throws -> ChatResponse
     func embed(_ texts: [String]) async throws -> [[Float]]
-    func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion
-    /// Same as `chat`, optionally forcing one tool by name (the provider's `tool_choice`).
+    /// Optionally forces one tool by name (the provider's `tool_choice`).
     func chat(
         messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
     ) async throws -> ChatCompletion
@@ -150,14 +150,10 @@ public extension LLMProvider {
     // Defaults keep the plain (non-agent) test doubles small.
     var config: ProviderConfig { ProviderConfig.fromEnvironment() }
 
-    func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion {
-        throw LLMError.notConfigured("this provider does not support tool-calling chat")
-    }
-
     func chat(
-        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double
     ) async throws -> ChatCompletion {
-        try await chat(messages: messages, tools: tools, temperature: temperature)
+        try await chat(messages: messages, tools: tools, temperature: temperature, forceTool: nil)
     }
 
     func chatText(system: String, user: String, temperature: Double) async throws -> String {

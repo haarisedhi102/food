@@ -26,7 +26,11 @@ struct KitchenView: View {
                     archivedSection
                 }
             }
+            #if os(iOS)
             .listStyle(.insetGrouped)
+            #else
+            .listStyle(.inset)
+            #endif
             .safeAreaInset(edge: .top, spacing: 0) {
                 SyncStatusBanner(
                     stage: app.isBusy ? app.syncStatus : "",
@@ -37,21 +41,25 @@ struct KitchenView: View {
                 .animation(.snappy, value: app.syncToast)
             }
             .navigationTitle("Kitchen")
+            #if os(iOS)
             .searchable(
                 text: $app.query,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Search your kitchen"
             )
+            #else
+            .searchable(text: $app.query, prompt: "Search your kitchen")
+            #endif
             .navigationDestination(for: ItemRow.self) { ItemDetailView(item: $0) }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button {
                         showingSync = true
                     } label: {
                         Label("Sync receipts", systemImage: "tray.and.arrow.down")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         app.refresh()
                     } label: {
@@ -362,7 +370,7 @@ struct ItemDetailView: View {
         Text(text)
             .font(.caption2)
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(Color(.secondarySystemBackground), in: Capsule())
+            .background(.quaternary, in: Capsule())
             .foregroundStyle(color)
     }
 

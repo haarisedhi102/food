@@ -46,12 +46,16 @@ struct SettingsView: View {
                         .focused($focusedField, equals: .apiKey)
                     TextField("Base URL", text: $baseURL)
                         .focused($focusedField, equals: .baseURL)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
                         .keyboardType(.URL)
+                        #endif
+                        .autocorrectionDisabled()
                     TextField("Model", text: $model)
                         .focused($focusedField, equals: .model)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                         .submitLabel(.done)
                         .onSubmit { focusedField = nil }
@@ -61,7 +65,9 @@ struct SettingsView: View {
                         .focused($focusedField, equals: .embedKey)
                     TextField("Embedding model", text: $embedModel)
                         .focused($focusedField, equals: .embedModel)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                         .submitLabel(.done)
                         .onSubmit { focusedField = nil }
@@ -93,7 +99,7 @@ struct SettingsView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(KeyboardDismissOnTap())
+            .keyboardDismissOnTap()
             .safeAreaInset(edge: .top, spacing: 0) {
                 SyncStatusBanner(
                     stage: app.isBusy ? app.syncStatus : "",
@@ -104,12 +110,14 @@ struct SettingsView: View {
                 .animation(.snappy, value: app.syncToast)
             }
             .navigationTitle("Settings")
+            #if os(iOS)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { focusedField = nil }
                 }
             }
+            #endif
             .sheet(isPresented: $showingSync) {
                 SyncSheet()
             }

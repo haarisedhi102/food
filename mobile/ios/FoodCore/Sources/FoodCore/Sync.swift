@@ -29,7 +29,7 @@ public enum Sync {
         progress?("Saving \(receipts.count) receipts…")
         let (newR, newI) = try Store.store(db, retailer: retailer, receipts: receipts)
         let jev: JevProvider? = provider.config.jevEnabled && !provider.config.apiKey.isEmpty
-            ? JevClient(config: provider.config) : nil
+            ? (provider as? JevProvider) : nil
         // classify = canonicalize (which also resolves shelf life for the new food items)
         let stats = try await Canonicalize.canonicalize(
             db, provider: provider, embedModel: embedModel, jev: jev, progress: progress

@@ -20,7 +20,7 @@ final class ScriptedProvider: LLMProvider, @unchecked Sendable {
 
     func chatText(system: String, user: String, temperature: Double) async throws -> String { text }
 
-    func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double) async throws -> ChatCompletion {
+    func chat(messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?) async throws -> ChatCompletion {
         let c = completions[min(chatCalls, max(completions.count - 1, 0))]
         chatCalls += 1
         return c

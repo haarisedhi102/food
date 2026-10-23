@@ -39,36 +39,32 @@ struct SyncSheet: View {
                 statusBar
             }
             .navigationTitle("Sync receipts")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         model.reload()
                     } label: {
                         Label("Reload page", systemImage: "arrow.clockwise")
                     }
                 }
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Button("Probe") { Task { await probe() } }
-                        .disabled(model.isBusy)
-                    Button("Fetch") { Task { await fetch() } }
-                        .disabled(model.isBusy)
-                    Spacer()
-                    if pendingPayload != nil {
-                        Button {
-                            Task { await sync() }
-                        } label: {
-                            if app.isBusy { ProgressView() } else { Text("Sync") }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(app.isBusy)
-                    }
-                }
+                #if os(iOS)
+                ToolbarItemGroup(placement: .bottomBar) { actionButtons }
+                #else
+                ToolbarItemGroup(placement: .automatic) { actionButtons }
+                #endif
             }
         }
+        #if os(macOS)
+        // A macOS sheet sizes to its content, and WKWebView reports no intrinsic size, so
+        // without an explicit frame the browser collapses and the page never shows.
+        .frame(minWidth: 900, minHeight: 720)
+        #endif
         .sheet(isPresented: $showExport) {
             ExportSheet(text: exportText, url: exportURL, storageKeys: storageKeys)
         }
@@ -150,6 +146,24 @@ struct SyncSheet: View {
         }
     }
 
+    @ViewBuilder
+    private var actionButtons: some View {
+        Button("Probe") { Task { await probe() } }
+            .disabled(model.isBusy)
+        Button("Fetch") { Task { await fetch() } }
+            .disabled(model.isBusy)
+        Spacer()
+        if pendingPayload != nil {
+            Button {
+                Task { await sync() }
+            } label: {
+                if app.isBusy { ProgressView() } else { Text("Sync") }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(app.isBusy)
+        }
+    }
+
     private func probe() async {
         model.isBusy = true
         defer { model.isBusy = false }
@@ -186,10 +200,12 @@ struct ExportSheet: View {
                 }
             }
             .navigationTitle("Result")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Done") { dismiss() } }
-                ToolbarItem(placement: .topBarTrailing) { if let url { ShareLink(item: url) } }
+                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) { if let url { ShareLink(item: url) } }
             }
         }
     }

@@ -2,6 +2,7 @@ uniffi::setup_scaffolding!();
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
@@ -66,6 +67,78 @@ pub struct ChatOut {
 pub struct JevDynamicResult {
     pub answers_json: String,
     pub model: String,
+    pub input_tokens: Option<u64>,
+    pub output_tokens: Option<u64>,
+    pub request_id: Option<String>,
+}
+
+/// Per-call provider configuration. Passed as JSON so there is no global mutable state:
+/// multiple app settings and tests can run against different providers concurrently.
+#[derive(Clone, Deserialize)]
+struct RigConfig {
+    base_url: String,
+    api_key: String,
+    model: String,
+    max_tokens: u64,
+    timeout_s: f64,
+    embed_base_url: String,
+    embed_api_key: String,
+    embed_model: String,
+    jev_base_url: String,
+    jev_enabled: bool,
+    jev_model: String,
+    jev_timeout_s: f64,
+    jev_api_key: Option<String>,
+}
+
+impl RigConfig {
+    fn from_json(config_json: &str) -> Result<Self, RigError> {
+        serde_json::from_str(config_json)
+            .map_err(|e| config_error(format!("config JSON: {e}")))
+    }
+
+    /// PoC env-backed config, preserving the original `RIG_POC_*` behavior.
+    fn from_env() -> Result<Self, RigError> {
+        Ok(Self {
+            base_url: std::env::var("RIG_POC_BASE_URL")
+                .unwrap_or_else(|_| "https://api.commandcode.ai/provider/v1".into()),
+            api_key: std::env::var("CMD_API_KEY").unwrap_or_default(),
+            model: std::env::var("RIG_POC_MODEL")
+                .unwrap_or_else(|_| "xiaomi/mimo-v2.6-flash".into()),
+            max_tokens: std::env::var("RIG_POC_MAX_TOKENS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(8192),
+            timeout_s: std::env::var("RIG_POC_TIMEOUT_S")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(120.0),
+            embed_base_url: std::env::var("RIG_POC_EMBED_BASE_URL")
+                .unwrap_or_else(|_| "https://openrouter.ai/api/v1".into()),
+            embed_api_key: std::env::var("OPENROUTER_API_KEY").unwrap_or_default(),
+            embed_model: std::env::var("RIG_POC_EMBED_MODEL")
+                .unwrap_or_else(|_| "baai/bge-base-en-v1.5".into()),
+            jev_base_url: std::env::var("RIG_POC_JEV_ENDPOINT")
+                .unwrap_or_else(|_| "https://api.commandcode.ai/provider/v1/systemone".into()),
+            jev_enabled: true,
+            jev_model: std::env::var("RIG_POC_JEV_MODEL")
+                .unwrap_or_else(|_| "typesafe/jev-1.14.0".into()),
+            jev_timeout_s: std::env::var("RIG_POC_JEV_TIMEOUT_S")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(120.0),
+            jev_api_key: std::env::var("JEV_TOKEN").ok(),
+        })
+    }
+}
+
+/// Clamp a configured timeout to something `Duration::from_secs_f64` accepts.
+fn timeout_seconds(value: f64, fallback: f64) -> f64 {
+    if value.is_finite() && value > 0.0 {
+        value
+    } else {
+        fallback
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,26 +195,13 @@ fn jev_error(error: impl std::fmt::Display) -> RigError {
     RigError::Jev { message: error.to_string() }
 }
 
-fn chat_client() -> Result<OpenAI, RigError> {
-    let api_key = std::env::var("CMD_API_KEY")
-        .map_err(|_| config_error("CMD_API_KEY is not set"))?;
-    let base_url = std::env::var("RIG_POC_BASE_URL")
-        .unwrap_or_else(|_| "https://api.commandcode.ai/provider/v1".into());
-    Ok(OpenAIConfig::new(api_key)
-        .with_base_url(base_url)
+fn chat_client(config: &RigConfig) -> Result<OpenAI, RigError> {
+    if config.api_key.is_empty() {
+        return Err(config_error("CMD_API_KEY is not set"));
+    }
+    Ok(OpenAIConfig::new(config.api_key.clone())
+        .with_base_url(config.base_url.clone())
         .client())
-}
-
-fn chat_model_id() -> String {
-    std::env::var("RIG_POC_MODEL")
-        .unwrap_or_else(|_| "xiaomi/mimo-v2.6-flash".into())
-}
-
-fn max_tokens() -> u64 {
-    std::env::var("RIG_POC_MAX_TOKENS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(8192)
 }
 
 fn parse_messages(messages_json: &str) -> Result<Vec<Message>, RigError> {
@@ -283,39 +343,7 @@ pub async fn chat(prompt: String) -> Result<String, RigError> {
 
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn chat_text(prompt: String) -> Result<ChatText, RigError> {
-    let client = chat_client()?;
-    let model_id = chat_model_id();
-    let input_json = json!({"prompt": prompt}).to_string();
-    let span = rig::completion_parent_span!(
-        target: "rig_poc",
-        name: "chat",
-        operation: "chat",
-        system_instructions: Option::<&str>::None,
-        input.value = %input_json,
-        input.mime_type = "application/json",
-        output.value = tracing::field::Empty,
-        output.mime_type = "application/json",
-        openinference.span.kind = "LLM",
-        llm.provider = "openai",
-        llm.model_name = %model_id,
-    );
-    let response = client
-        .completion(model_id)
-        .call(
-            CompletionRequest::new(prompt)
-                .temperature(Some(0.2))
-                .max_tokens(Some(max_tokens()))
-                .record_content_telemetry(true),
-        )
-        .instrument(span.clone())
-        .await
-        .map_err(llm_error)?;
-    let text = response.text();
-    span.record("output.value", text.as_str());
-    Ok(ChatText {
-        text,
-        model: response.model().unwrap_or("unknown").to_string(),
-    })
+    complete_text(RigConfig::from_env()?, None, prompt, 0.2).await
 }
 
 /// System/user completion returning raw text, the equivalent of `chatJSON`.
@@ -325,11 +353,42 @@ pub async fn chat_json(
     user: String,
     temperature: f64,
 ) -> Result<ChatText, RigError> {
-    let client = chat_client()?;
-    let model_id = chat_model_id();
+    complete_text(RigConfig::from_env()?, Some(system), user, temperature).await
+}
+
+/// System/user completion with an explicit per-call config (`chatJSON`).
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn chat_json_configured(
+    config_json: String,
+    system: String,
+    user: String,
+    temperature: f64,
+) -> Result<ChatText, RigError> {
+    complete_text(RigConfig::from_json(&config_json)?, Some(system), user, temperature).await
+}
+
+/// System/user text completion with an explicit per-call config (`chatText`).
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn chat_text_configured(
+    config_json: String,
+    system: String,
+    user: String,
+    temperature: f64,
+) -> Result<ChatText, RigError> {
+    complete_text(RigConfig::from_json(&config_json)?, Some(system), user, temperature).await
+}
+
+async fn complete_text(
+    config: RigConfig,
+    system: Option<String>,
+    user: String,
+    temperature: f64,
+) -> Result<ChatText, RigError> {
+    let client = chat_client(&config)?;
+    let model_id = config.model.clone();
     let input_json = json!({
-        "system": system,
-        "user": user,
+        "system": system.as_deref(),
+        "user": user.as_str(),
         "temperature": temperature,
     })
     .to_string();
@@ -346,18 +405,26 @@ pub async fn chat_json(
         llm.provider = "openai",
         llm.model_name = %model_id,
     );
-    let response = client
-        .completion(model_id)
-        .call(
-            CompletionRequest::new(user)
-                .preamble(system)
-                .temperature(Some(temperature))
-                .max_tokens(Some(max_tokens()))
-                .record_content_telemetry(true),
-        )
-        .instrument(span.clone())
-        .await
-        .map_err(llm_error)?;
+    let mut request = CompletionRequest::new(user)
+        .temperature(Some(temperature))
+        .max_tokens(Some(config.max_tokens))
+        .record_content_telemetry(true);
+    if let Some(system) = system {
+        request = request.preamble(system);
+    }
+    let timeout = timeout_seconds(config.timeout_s, 120.0);
+    let response = tokio::time::timeout(
+        Duration::from_secs_f64(timeout),
+        client
+            .completion(model_id)
+            .call(request)
+            .instrument(span.clone()),
+    )
+    .await
+    .map_err(|_| RigError::Llm {
+        message: format!("timed out after {timeout}s"),
+    })?
+    .map_err(llm_error)?;
     let text = response.text();
     span.record("output.value", text.as_str());
     Ok(ChatText {
@@ -375,8 +442,43 @@ pub async fn chat_with_tools(
     force_tool: Option<String>,
     temperature: f64,
 ) -> Result<ChatOut, RigError> {
-    let client = chat_client()?;
-    let model_id = chat_model_id();
+    chat_with_tools_impl(
+        RigConfig::from_env()?,
+        messages_json,
+        tools_json,
+        force_tool,
+        temperature,
+    )
+    .await
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn chat_with_tools_configured(
+    config_json: String,
+    messages_json: String,
+    tools_json: String,
+    force_tool: Option<String>,
+    temperature: f64,
+) -> Result<ChatOut, RigError> {
+    chat_with_tools_impl(
+        RigConfig::from_json(&config_json)?,
+        messages_json,
+        tools_json,
+        force_tool,
+        temperature,
+    )
+    .await
+}
+
+async fn chat_with_tools_impl(
+    config: RigConfig,
+    messages_json: String,
+    tools_json: String,
+    force_tool: Option<String>,
+    temperature: f64,
+) -> Result<ChatOut, RigError> {
+    let client = chat_client(&config)?;
+    let model_id = config.model.clone();
     let input_value = json!({
         "messages": serde_json::from_str::<Value>(&messages_json).unwrap_or(Value::Null),
         "tools": serde_json::from_str::<Value>(&tools_json).unwrap_or(Value::Null),
@@ -402,7 +504,7 @@ pub async fn chat_with_tools(
     let last = messages.pop().ok_or_else(|| config_error("messages cannot be empty"))?;
     let mut request = CompletionRequest::new(last)
         .temperature(Some(temperature))
-        .max_tokens(Some(max_tokens()))
+        .max_tokens(Some(config.max_tokens))
         .record_content_telemetry(true);
     if !messages.is_empty() {
         request = request.messages(messages);
@@ -417,12 +519,19 @@ pub async fn chat_with_tools(
             function_names: vec![name],
         });
     }
-    let response = client
-        .completion(model_id)
-        .call(request)
-        .instrument(span.clone())
-        .await
-        .map_err(llm_error)?;
+    let timeout = timeout_seconds(config.timeout_s, 120.0);
+    let response = tokio::time::timeout(
+        Duration::from_secs_f64(timeout),
+        client
+            .completion(model_id)
+            .call(request)
+            .instrument(span.clone()),
+    )
+    .await
+    .map_err(|_| RigError::Llm {
+        message: format!("timed out after {timeout}s"),
+    })?
+    .map_err(llm_error)?;
     let calls: Vec<ToolCallOut> = response
         .tool_calls()
         .map(|call| ToolCallOut {
@@ -449,16 +558,26 @@ pub async fn chat_with_tools(
 /// OpenRouter embeddings, the equivalent of `LLMProvider.embed`.
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn embed(texts: Vec<String>) -> Result<Vec<Vec<f32>>, RigError> {
+    embed_impl(RigConfig::from_env()?, texts).await
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn embed_configured(
+    config_json: String,
+    texts: Vec<String>,
+) -> Result<Vec<Vec<f32>>, RigError> {
+    embed_impl(RigConfig::from_json(&config_json)?, texts).await
+}
+
+async fn embed_impl(config: RigConfig, texts: Vec<String>) -> Result<Vec<Vec<f32>>, RigError> {
     if texts.is_empty() {
         return Ok(Vec::new());
     }
-    let api_key = std::env::var("OPENROUTER_API_KEY")
-        .map_err(|_| config_error("OPENROUTER_API_KEY is not set"))?;
-    let base_url = std::env::var("RIG_POC_EMBED_BASE_URL")
-        .unwrap_or_else(|_| "https://openrouter.ai/api/v1".into());
-    let model_id = std::env::var("RIG_POC_EMBED_MODEL")
-        .unwrap_or_else(|_| "baai/bge-base-en-v1.5".into());
-    let input_json = json!({"texts": texts}).to_string();
+    if config.embed_api_key.is_empty() {
+        return Err(config_error("OPENROUTER_API_KEY is not set"));
+    }
+    let model_id = config.embed_model.clone();
+    let input_json = json!({"texts": texts.as_slice()}).to_string();
     let span = tracing::info_span!(
         "embeddings",
         gen_ai.operation.name = "embeddings",
@@ -473,15 +592,20 @@ pub async fn embed(texts: Vec<String>) -> Result<Vec<Vec<f32>>, RigError> {
         output.value = tracing::field::Empty,
         output.mime_type = "application/json",
     );
-    let embedder = OpenAIConfig::new(api_key)
-        .with_base_url(base_url)
+    let embedder = OpenAIConfig::new(config.embed_api_key.clone())
+        .with_base_url(config.embed_base_url.clone())
         .client()
         .embedding(model_id, None);
-    let response = embedder
-        .call(texts)
-        .instrument(span.clone())
-        .await
-        .map_err(llm_error)?;
+    let timeout = timeout_seconds(config.timeout_s, 120.0);
+    let response = tokio::time::timeout(
+        Duration::from_secs_f64(timeout),
+        embedder.call(texts).instrument(span.clone()),
+    )
+    .await
+    .map_err(|_| RigError::Llm {
+        message: format!("timed out after {timeout}s"),
+    })?
+    .map_err(llm_error)?;
     let vectors: Vec<Vec<f32>> = response
         .embeddings
         .into_iter()
@@ -499,8 +623,8 @@ pub async fn embed(texts: Vec<String>) -> Result<Vec<Vec<f32>>, RigError> {
 /// One typed Jev `Noul` (yes/no) judgment through Command Code's System One route.
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn jev_noul(question: String, state: String) -> Result<JevDecision, RigError> {
-    let model = std::env::var("RIG_POC_JEV_MODEL")
-        .unwrap_or_else(|_| "typesafe/jev-1.14.0".into());
+    let config = RigConfig::from_env()?;
+    let model = config.jev_model.clone();
     let state_value = serde_json::from_str::<Value>(&state)
         .unwrap_or_else(|_| Value::String(state.clone()));
     let input_json = json!({"question": question, "state": state_value}).to_string();
@@ -522,7 +646,7 @@ pub async fn jev_noul(question: String, state: String) -> Result<JevDecision, Ri
         output.mime_type = "application/json",
     );
     let result = async {
-        let client = jev_client()?;
+        let client = jev_client(&config)?;
         let query = Noul::new(question)
             .and_then(|q| q.named("decision"))
             .map_err(jev_error)?;
@@ -555,14 +679,40 @@ pub async fn jev_noul(question: String, state: String) -> Result<JevDecision, Ri
 }
 
 /// Runtime-defined Jev questions: supports `Noul`, `Choice`, and `Score`, with
-/// the same named dynamic question IDs as `JevClient`.
+/// the same named dynamic question IDs as the Swift `JevClient` did.
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn jev_dynamic(
     state_json: String,
     questions_json: String,
 ) -> Result<JevDynamicResult, RigError> {
-    let model = std::env::var("RIG_POC_JEV_MODEL")
-        .unwrap_or_else(|_| "typesafe/jev-1.14.0".into());
+    jev_dynamic_impl(RigConfig::from_env()?, state_json, questions_json).await
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn jev_dynamic_configured(
+    config_json: String,
+    state_json: String,
+    questions_json: String,
+) -> Result<JevDynamicResult, RigError> {
+    jev_dynamic_impl(
+        RigConfig::from_json(&config_json)?,
+        state_json,
+        questions_json,
+    )
+    .await
+}
+
+async fn jev_dynamic_impl(
+    config: RigConfig,
+    state_json: String,
+    questions_json: String,
+) -> Result<JevDynamicResult, RigError> {
+    if !config.jev_enabled {
+        return Err(RigError::Jev {
+            message: "Jev is disabled".into(),
+        });
+    }
+    let model = config.jev_model.clone();
     let state_value: Value = serde_json::from_str(&state_json)
         .map_err(|e| config_error(format!("state JSON: {e}")))?;
     let questions_value: Value = serde_json::from_str(&questions_json)
@@ -589,8 +739,9 @@ pub async fn jev_dynamic(
         output.value = tracing::field::Empty,
         output.mime_type = "application/json",
     );
-    let result = async {
-        let client = jev_client()?;
+    let timeout = timeout_seconds(config.jev_timeout_s, 120.0);
+    let result = tokio::time::timeout(Duration::from_secs_f64(timeout), async {
+        let client = jev_client(&config)?;
         let definitions: BTreeMap<String, Question> =
             serde_json::from_value(questions_value.clone())
                 .map_err(|e| config_error(format!("questions JSON: {e}")))?;
@@ -601,8 +752,11 @@ pub async fn jev_dynamic(
             .await
             .map_err(jev_error)
     }
-    .instrument(span.clone())
-    .await?;
+    .instrument(span.clone()))
+    .await
+    .map_err(|_| RigError::Jev {
+        message: format!("timed out after {timeout}s"),
+    })??;
     span.record("gen_ai.response.model", result.model.as_str());
     if let Some(Usage { input_tokens: Some(n), .. }) = result.usage {
         span.record("gen_ai.usage.input_tokens", n);
@@ -616,22 +770,36 @@ pub async fn jev_dynamic(
     })
     .to_string();
     span.record("output.value", output_json.as_str());
+    let usage = result.usage;
     Ok(JevDynamicResult {
         answers_json: serde_json::to_string(&result.answers).map_err(jev_error)?,
         model: result.model,
+        input_tokens: usage.and_then(|usage| usage.input_tokens),
+        output_tokens: usage.and_then(|usage| usage.output_tokens),
+        request_id: result.provider_request_id,
     })
 }
 
-fn jev_client() -> Result<rig::typesafeai::Jev, RigError> {
-    let token = std::env::var("JEV_TOKEN")
-        .or_else(|_| std::env::var("CMD_API_KEY"))
-        .map_err(|_| config_error("neither JEV_TOKEN nor CMD_API_KEY is set"))?;
-    let endpoint = std::env::var("RIG_POC_JEV_ENDPOINT")
-        .unwrap_or_else(|_| "https://api.commandcode.ai/provider/v1/systemone".into());
-    let model = std::env::var("RIG_POC_JEV_MODEL")
-        .unwrap_or_else(|_| "typesafe/jev-1.14.0".into());
+fn jev_endpoint(base_url: &str) -> String {
+    let trimmed = base_url.trim_end_matches('/');
+    if trimmed.ends_with("/systemone") {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/v1/systemone")
+    }
+}
+
+fn jev_client(config: &RigConfig) -> Result<rig::typesafeai::Jev, RigError> {
+    let token = config
+        .jev_api_key
+        .clone()
+        .filter(|token| !token.is_empty())
+        .unwrap_or_else(|| config.api_key.clone());
+    if token.is_empty() {
+        return Err(config_error("neither JEV_TOKEN nor CMD_API_KEY is set"));
+    }
     Ok(JevConfig::new(token)
-        .with_endpoint(endpoint)
-        .model(model)
+        .with_endpoint(jev_endpoint(&config.jev_base_url))
+        .model(config.jev_model.clone())
         .client())
 }

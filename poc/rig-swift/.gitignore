@@ -1,6 +1,8 @@
-rust/target/
+# The Rust crate moved to mobile/ios/Rig; only PoC build outputs are local here.
 swift/.build/
 swift/generated/
 swift/artifacts/
 swift/Sources/rig_pocFFI/include/
 swift/Sources/RigPoCKit/*.swift
+
+.DS_Store

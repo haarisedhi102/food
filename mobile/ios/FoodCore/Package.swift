@@ -8,16 +8,26 @@ let package = Package(
         .library(name: "FoodCore", targets: ["FoodCore"]),
         .executable(name: "foodcore-cli", targets: ["foodcore-cli"]),
     ],
-    dependencies: [
-        // OpenAI-compatible client. Handles the HTTP/JSON plumbing, tool-calling, structured
-        // outputs and embeddings so we don't maintain it. Supports a custom `basePath`, which
-        // is why our `/provider/v1` mount works.
-        .package(url: "https://github.com/MacPaw/OpenAI.git", from: "0.5.3"),
-    ],
     targets: [
+        // Built by scripts/build-rig.sh from mobile/ios/Rig. Generated artifacts are gitignored.
+        .binaryTarget(name: "RigPoc", path: "Vendor/RigPoc.xcframework"),
+        .target(
+            name: "rig_pocFFI",
+            path: "Sources/rig_pocFFI",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "RigPocKit",
+            dependencies: ["rig_pocFFI", "RigPoc"],
+            path: "Sources/RigPocKit",
+            linkerSettings: [
+                // Rust's HTTP stack reads the macOS system proxy configuration.
+                .linkedFramework("SystemConfiguration", .when(platforms: [.macOS]))
+            ]
+        ),
         .target(
             name: "FoodCore",
-            dependencies: [.product(name: "OpenAI", package: "OpenAI")],
+            dependencies: ["RigPocKit", "RigPoc"],
             resources: [.copy("Resources")]
         ),
         .executableTarget(name: "foodcore-cli", dependencies: ["FoodCore"], path: "Sources/foodcore-cli"),

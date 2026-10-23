@@ -26,7 +26,7 @@ final class FakeProvider: LLMProvider, @unchecked Sendable {
     /// Keeps canonicalization tests fast: research yields notes, synthesis yields an empty
     /// verdict, so the resolver has nothing to apply and never retries.
     func chat(
-        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double
+        messages: [[String: Any]], tools: [[String: Any]]?, temperature: Double, forceTool: String?
     ) async throws -> ChatCompletion {
         let system = messages.first { ($0["role"] as? String) == "system" }?["content"] as? String
         if system == ShelfLifeAgent.researchSystem {

@@ -2,3 +2,5 @@ RigPoCiOS.xcodeproj/
 Sources/Info.plist
 build/
 DerivedData/
+
+.DS_Store

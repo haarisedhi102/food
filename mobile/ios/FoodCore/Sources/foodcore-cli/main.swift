@@ -50,8 +50,8 @@ struct CLI {
         case "canonicalize":
             let db = try openDB(opts)
             let config = providerConfig(opts)
-            let provider = MacPawProvider(config: config)
-            let jev = config.jevEnabled && !config.apiKey.isEmpty ? JevClient(config: config) : nil
+            let provider = RigProvider(config: config)
+            let jev: JevProvider? = config.jevEnabled && !config.apiKey.isEmpty ? provider : nil
             let stats = try await Canonicalize.canonicalize(
                 db, provider: provider, embedModel: embedModel(opts, provider),
                 jev: jev, limit: opts.int("limit")
@@ -60,7 +60,7 @@ struct CLI {
                 + "resolved=\(stats.resolved)")
 
         case "ping":
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let provider = RigProvider(config: providerConfig(opts))
             print("base=\(provider.config.baseURL) models=\(provider.config.models)")
             let reply = try await provider.chatText(system: "You are terse.", user: "Reply with exactly: OK", temperature: 0)
             print("chat -> \(reply.trimmingCharacters(in: .whitespacesAndNewlines))")
@@ -74,7 +74,7 @@ struct CLI {
         case "sync":
             let (db, payload) = try openForImport(opts)
             let retailer = try opts.require("retailer")
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let provider = RigProvider(config: providerConfig(opts))
             let summary = try await Sync.run(
                 db, retailer: retailer, payload: payload, provider: provider,
                 embedModel: embedModel(opts, provider)
@@ -86,8 +86,8 @@ struct CLI {
         case "resolve":
             let db = try openDB(opts)
             let config = providerConfig(opts)
-            let provider = MacPawProvider(config: config)
-            let jev = config.jevEnabled && !config.apiKey.isEmpty ? JevClient(config: config) : nil
+            let provider = RigProvider(config: config)
+            let jev: JevProvider? = config.jevEnabled && !config.apiKey.isEmpty ? provider : nil
             let stats = try await ShelfLifeAgent.resolveMissing(
                 db, provider: provider, limit: opts.int("limit"),
                 embedModel: embedModel(opts, provider), jev: jev
@@ -96,12 +96,12 @@ struct CLI {
 
         case "chat":
             let db = try openDB(opts)
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let provider = RigProvider(config: providerConfig(opts))
             print(try await Chat.ask(db, question: try opts.require("q"), provider: provider))
 
         case "digest":
             let db = try openDB(opts)
-            let provider = MacPawProvider(config: providerConfig(opts))
+            let provider = RigProvider(config: providerConfig(opts))
             if let text = try await Chat.digest(db, days: opts.int("days") ?? 3, provider: provider) {
                 print(text)
             } else {
@@ -151,7 +151,7 @@ struct CLI {
         return ProviderConfig.fromEnvironment(envFile: FileManager.default.fileExists(atPath: envFile.path) ? envFile : nil)
     }
 
-    static func embedModel(_ opts: Options, _ provider: MacPawProvider) -> String? {
+    static func embedModel(_ opts: Options, _ provider: LLMProvider) -> String? {
         if let m = opts.value("embed-model") { return m }
         return provider.config.embeddingsConfigured ? provider.config.embedModel : nil
     }

@@ -116,13 +116,25 @@ xcrun simctl io booted screenshot shot.png
 
 ## Build & run
 
-Needs Xcode + [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
+Needs Xcode + [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), plus
+Rust 1.97.1 (pinned in `Rig/rust-toolchain.toml`) to build the Rig transport. `run.sh` generates
+the XCFramework automatically; when building FoodCore directly, run
+`FoodCore/scripts/build-rig.sh` first (its outputs are gitignored):
 
 ```bash
 # boot a simulator first, e.g.:
 xcrun simctl boot "iPhone 17 Pro" && open "$(xcode-select -p)/../Applications/DeviceHub.app"
-./run.sh            # generate project, build, install, launch
+./run.sh            # build Rig, generate project, build, install, launch
 ```
+
+For a native macOS app (same sources, AppKit/UIKit differences behind `#if os`):
+
+```bash
+./run-mac.sh        # build Rig, generate project, build, launch FoodCaptureMac
+```
+
+All LLM/embedding/Jev traffic goes Swift -> generated UniFFI bindings -> Rust (`Rig`) ->
+provider. Domain behavior (resolver, canonicalize, tool loop) stays in Swift for Python parity.
 
 In the app: pick the retailer, log in, tap **Fetch**. Then **Share** the produced
 `*-raw.json` off the device (or pull it from the simulator):

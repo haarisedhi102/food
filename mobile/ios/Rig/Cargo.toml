@@ -13,7 +13,7 @@ path = "src/bin/uniffi-bindgen.rs"
 
 [dependencies]
 rig = { version = "0.45.0", default-features = false, features = ["reqwest", "rustls", "typesafeai"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 uniffi = { version = "0.32.2", features = ["cli", "tokio"] }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }

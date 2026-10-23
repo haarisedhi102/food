@@ -1,4 +1,5 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
 
 /// Dismisses the keyboard when the user taps anywhere outside a text field or control.
@@ -78,3 +79,16 @@ struct KeyboardDismissOnTap: UIViewControllerRepresentable {
         }
     }
 }
+
+extension View {
+    func keyboardDismissOnTap() -> some View { background(KeyboardDismissOnTap()) }
+}
+
+#else
+
+extension View {
+    /// No-op on macOS: clicking outside a field already moves focus.
+    func keyboardDismissOnTap() -> some View { self }
+}
+
+#endif

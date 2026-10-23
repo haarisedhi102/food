@@ -1,6 +1,8 @@
 import Foundation
 import FoodCore
+#if os(iOS)
 import UIKit
+#endif
 
 /// Owns the on-device database and the data the UI renders. The DB path can be overridden with
 /// `FOOD_DB_PATH` (used for seeded visual checks in the simulator); otherwise it lives in
@@ -32,8 +34,10 @@ final class AppModel: ObservableObject {
     /// Selected tab. A sync started from the browser sheet switches to Kitchen so the
     /// progress banner is visible.
     @Published var selectedTab = Int(ProcessInfo.processInfo.environment["FOOD_TAB"] ?? "0") ?? 0
+    #if os(iOS)
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var idleTimerWasDisabled = false
+    #endif
     /// Empty means "no active search" — all shelves are shown ungrouped by shelf.
     @Published var query = ""
     /// Shelves whose full list is expanded in the browser. Long shelves (pantry) start collapsed
@@ -63,7 +67,10 @@ final class AppModel: ObservableObject {
     }
 
     init() {
-        let path = ProcessInfo.processInfo.environment["FOOD_DB_PATH"] ?? AppModel.defaultDBPath()
+        // Only honor an absolute override: a relative FOOD_DB_PATH (easy to inherit from a
+        // shell) would resolve against the app's launch directory and fail to open.
+        let override = ProcessInfo.processInfo.environment["FOOD_DB_PATH"]
+        let path = override?.hasPrefix("/") == true ? override! : AppModel.defaultDBPath()
         do {
             db = try Database(path: path)
             try Schema.initDB(db)
@@ -147,7 +154,7 @@ final class AppModel: ObservableObject {
     }
 
     var provider: LLMProvider {
-        MacPawProvider(config: Settings.providerConfig())
+        RigProvider(config: Settings.providerConfig())
     }
 
     /// Normalize → store → canonicalize → resolve → inventory, for a payload the web view fetched.
@@ -277,6 +284,7 @@ final class AppModel: ObservableObject {
     /// A slow sync shouldn't be interrupted by the screen locking: keep the display awake
     /// while it runs, and ask for background time in case the person leaves the app anyway.
     private func beginExtendedExecution() {
+        #if os(iOS)
         idleTimerWasDisabled = UIApplication.shared.isIdleTimerDisabled
         UIApplication.shared.isIdleTimerDisabled = true
         guard backgroundTask == .invalid else { return }
@@ -284,13 +292,16 @@ final class AppModel: ObservableObject {
             [weak self] in
             self?.endExtendedExecution()
         }
+        #endif
     }
 
     private func endExtendedExecution() {
+        #if os(iOS)
         UIApplication.shared.isIdleTimerDisabled = idleTimerWasDisabled
         guard backgroundTask != .invalid else { return }
         UIApplication.shared.endBackgroundTask(backgroundTask)
         backgroundTask = .invalid
+        #endif
     }
 
     /// Keep the result on screen briefly after a sync, since the browser sheet may be gone.

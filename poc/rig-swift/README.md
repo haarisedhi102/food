@@ -32,7 +32,7 @@ slices, runs Tokio/Rig inside the app, and reaches Command Code over TLS.
 
 ## Requirements
 
-- Rust 1.97.1 (pinned in `rust/rust-toolchain.toml`; Rig 0.45 MSRV)
+- Rust 1.97.1 (pinned in `mobile/ios/Rig/rust-toolchain.toml`; Rig 0.45 MSRV)
 - Xcode / Swift 5.9+
 - `CMD_API_KEY`
 - `OPENROUTER_API_KEY` for embeddings
@@ -53,6 +53,8 @@ Optional:
 - `RUST_LOG=rig=debug,rig_poc=debug` for Rig tracing
 
 ## macOS build and run
+
+The crate now lives in the production tree at `mobile/ios/Rig`; the PoC scripts point there.
 
 ```bash
 cd poc/rig-swift

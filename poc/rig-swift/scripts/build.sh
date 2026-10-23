@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-RUST="$ROOT/rust"
+RUST="$ROOT/../../mobile/ios/Rig"
 SWIFT="$ROOT/swift"
 
 cd "$RUST"

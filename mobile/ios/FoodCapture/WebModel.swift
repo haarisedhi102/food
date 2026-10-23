@@ -411,13 +411,17 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
     /// either — WebKit tries the universal link before our decision matters. This policy
     /// is the only way to keep `costco.com` inside the web view. The value has been stable
     /// since iOS 9 and is what embedded browsers use.
+    #if os(iOS)
     private static let allowWithoutAppLink =
         WKNavigationActionPolicy(rawValue: WKNavigationActionPolicy.allow.rawValue + 2)!
+    #endif
 
     /// Keep OAuth/login flows inside the web view. Costco (and sometimes Kroger) try to hand
     /// off to their native app two ways: a custom scheme (`costco://…`), and a *universal link*
     /// — a plain `https://…costco.com/…` URL that iOS routes to the installed native app. Both
     /// lose the authenticated session the in-page fetch depends on, so both must stay here.
+    /// macOS has neither universal links nor the internal iOS policy value (3 is undefined
+    /// there), so it uses the plain `.allow`; anything else cancels every navigation.
     nonisolated func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
@@ -432,7 +436,11 @@ final class WebModel: NSObject, ObservableObject, WKNavigationDelegate {
                 decisionHandler(.cancel)
                 return
             }
+            #if os(iOS)
             decisionHandler(Self.allowWithoutAppLink)
+            #else
+            decisionHandler(.allow)
+            #endif
         }
     }
 
@@ -489,9 +497,18 @@ private actor Once {
 }
 
 /// Hosts the model's single persistent WKWebView inside SwiftUI.
+#if os(macOS)
+struct WebView: NSViewRepresentable {
+    let webView: WKWebView
+
+    func makeNSView(context: Context) -> WKWebView { webView }
+    func updateNSView(_ view: WKWebView, context: Context) {}
+}
+#else
 struct WebView: UIViewRepresentable {
     let webView: WKWebView
 
     func makeUIView(context: Context) -> WKWebView { webView }
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
+#endif
