@@ -5,6 +5,12 @@ import pytest
 from food import db
 
 
+@pytest.fixture(autouse=True)
+def _disable_jev(monkeypatch):
+    """Never make live Jev calls from the default test suite."""
+    monkeypatch.setattr("food.resolve.jev.is_configured", lambda: False)
+
+
 @pytest.fixture
 def conn():
     c = sqlite3.connect(":memory:")

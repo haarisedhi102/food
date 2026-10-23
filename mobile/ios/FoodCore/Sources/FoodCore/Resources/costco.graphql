@@ -1,0 +1,36 @@
+query receiptsWithCounts($startDate: String!, $endDate: String!, $documentType: String!, $documentSubType: String!) {
+  receiptsWithCounts(startDate: $startDate, endDate: $endDate, documentType: $documentType, documentSubType: $documentSubType) {
+    inWarehouse
+    gasStation
+    carWash
+    gasAndCarWash
+    receipts {
+      transactionBarcode
+      transactionDate
+      transactionDateTime
+      transactionType
+      documentType
+      receiptType
+      warehouseName
+      warehouseNumber
+      warehouseCity
+      warehouseState
+      membershipNumber
+      total
+      subTotal
+      totalItemCount
+      itemArray {
+        itemNumber
+        itemDescription01
+        itemDescription02
+        itemIdentifier
+        itemDepartmentNumber
+        transDepartmentNumber
+        unit
+        amount
+        itemUnitPriceAmount
+        taxFlag
+      }
+    }
+  }
+}

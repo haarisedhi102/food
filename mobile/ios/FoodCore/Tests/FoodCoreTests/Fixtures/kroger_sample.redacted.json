@@ -1,0 +1,4780 @@
+{
+  "search": [
+    {
+      "createdDateTime": {
+        "value": "2026-10-06T21:54:00Z",
+        "timezone": "UTC"
+      },
+      "handoffStoreId": "REDACTED",
+      "total": "USD 53.96",
+      "purchaseType": "FUEL",
+      "receiptKey": "00000~00000~2026-10-06~118~1341654",
+      "lineItems": [
+        {
+          "upc": "0001111036840"
+        }
+      ],
+      "status": "COMPLETED"
+    },
+    {
+      "createdDateTime": {
+        "value": "2026-10-05T23:09:00Z",
+        "timezone": "UTC"
+      },
+      "handoffStoreId": "REDACTED",
+      "total": "USD 122.47",
+      "purchaseType": "IN_STORE",
+      "receiptKey": "00000~00000~2026-10-05~514~871809",
+      "lineItems": [
+        {
+          "upc": "0074236526502"
+        },
+        {
+          "upc": "0001111089305"
+        },
+        {
+          "upc": "0001111089301"
+        },
+        {
+          "upc": "0001111012673"
+        },
+        {
+          "upc": "0007321400607"
+        },
+        {
+          "upc": "0004800171127"
+        },
+        {
+          "upc": "0001111010813"
+        },
+        {
+          "upc": "0001862711599"
+        },
+        {
+          "upc": "0008903644280"
+        },
+        {
+          "upc": "0001111011748"
+        },
+        {
+          "upc": "0001111014183"
+        },
+        {
+          "upc": "0007889530001"
+        },
+        {
+          "upc": "0004139000002"
+        },
+        {
+          "upc": "0001356212772"
+        },
+        {
+          "upc": "0072225207112"
+        },
+        {
+          "upc": "0001111058720"
+        },
+        {
+          "upc": "0003335707101"
+        },
+        {
+          "upc": "0003760410305"
+        },
+        {
+          "upc": "0003022306248"
+        },
+        {
+          "upc": "0003022304218"
+        },
+        {
+          "upc": "0003022306099"
+        },
+        {
+          "upc": "0001111084716"
+        },
+        {
+          "upc": "0001111015344"
+        },
+        {
+          "upc": "0000000004132"
+        },
+        {
+          "upc": "0000000004093"
+        }
+      ],
+      "status": "COMPLETED"
+    },
+    {
+      "createdDateTime": {
+        "value": "2026-09-28T20:49:00Z",
+        "timezone": "UTC"
+      },
+      "handoffStoreId": "REDACTED",
+      "total": "USD 31.94",
+      "purchaseType": "IN_STORE",
+      "receiptKey": "00000~00000~2026-09-28~510~1061549",
+      "lineItems": [
+        {
+          "upc": "0001111007367"
+        },
+        {
+          "upc": "0001111007377"
+        },
+        {
+          "upc": "0007675304017"
+        },
+        {
+          "upc": "0074236526502"
+        },
+        {
+          "upc": "0007189903746"
+        }
+      ],
+      "status": "COMPLETED"
+    },
+    {
+      "createdDateTime": {
+        "value": "2026-09-27T17:37:00Z",
+        "timezone": "UTC"
+      },
+      "handoffStoreId": "REDACTED",
+      "total": "USD 48.44",
+      "purchaseType": "IN_STORE",
+      "receiptKey": "00000~00000~2026-09-27~514~551237",
+      "lineItems": [
+        {
+          "upc": "0000000004067"
+        },
+        {
+          "upc": "0000000004132"
+        },
+        {
+          "upc": "0007680853357"
+        },
+        {
+          "upc": "0003620022302"
+        },
+        {
+          "upc": "0007680853360"
+        },
+        {
+          "upc": "0001111065056"
+        },
+        {
+          "upc": "0001111050159"
+        },
+        {
+          "upc": "0003022304109"
+        }
+      ],
+      "status": "COMPLETED"
+    },
+    {
+      "createdDateTime": {
+        "value": "2026-09-16T22:53:00Z",
+        "timezone": "UTC"
+      },
+      "handoffStoreId": "REDACTED",
+      "total": "USD 93.45",
+      "purchaseType": "IN_STORE",
+      "receiptKey": "00000~00000~2026-09-16~510~1401753",
+      "lineItems": [
+        {
+          "upc": "0003010010055"
+        },
+        {
+          "upc": "0004178599888"
+        },
+        {
+          "upc": "0007680853360"
+        },
+        {
+          "upc": "0004154800003"
+        },
+        {
+          "upc": "0001111011752"
+        },
+        {
+          "upc": "0001111011751"
+        },
+        {
+          "upc": "0001111011739"
+        },
+        {
+          "upc": "0001111011746"
+        },
+        {
+          "upc": "0001111050532"
+        },
+        {
+          "upc": "0003022304109"
+        },
+        {
+          "upc": "0004473807231"
+        },
+        {
+          "upc": "0001111009533"
+        },
+        {
+          "upc": "0001111091659"
+        },
+        {
+          "upc": "0000000004023"
+        },
+        {
+          "upc": "0000000004612"
+        },
+        {
+          "upc": "0000000004562"
+        },
+        {
+          "upc": "0000000004132"
+        },
+        {
+          "upc": "0000000004608"
+        },
+        {
+          "upc": "0000000004067"
+        },
+        {
+          "upc": "0000000004072"
+        },
+        {
+          "upc": "0007098205193"
+        },
+        {
+          "upc": "0081002120021"
+        },
+        {
+          "upc": "0007301072160"
+        },
+        {
+          "upc": "0004641211892"
+        },
+        {
+          "upc": "0007294571589"
+        },
+        {
+          "upc": "0003022304218"
+        }
+      ],
+      "status": "COMPLETED"
+    }
+  ],
+  "details": {
+    "00000~00000~2026-10-05~514~871809": {
+      "json": {
+        "data": {
+          "purchaseHistoryDetails": [
+            {
+              "costSummary": {
+                "total": "USD 48.44",
+                "totalTax": "USD 0.00",
+                "itemSalesAndCouponSavings": "USD 5.55",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 53.99",
+                "savings": "USD 5.55",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0007680853360",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Barilla Protein+ (Plus) Penne Pasta Non-GMO and Kosher Certified Plant Based Protein Pasta",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007680853360",
+                      "customerFacingSize": "14.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.99",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 5.98",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007680853360"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007680853357",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Barilla Protein+ (Plus) Spaghetti Pasta Non-GMO and Kosher Certified Plant Based Protein Pasta",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007680853357",
+                      "customerFacingSize": "14.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.99",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 2.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007680853357"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003620022302",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Bertolli\u00ae Organic Olive Oil Basil & Garlic Pasta Sauce",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003620022302",
+                      "customerFacingSize": "24 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.59",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.60",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.60",
+                      "originalTotalPricePaid": "USD 4.59"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003620022302"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111050159",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Mozzarella Shredded Cheese",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111050159",
+                      "customerFacingSize": "8 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.49",
+                      "unitPricePaid": "USD 2.00",
+                      "totalPricePaid": "USD 4.00",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.49",
+                          "description": "Item Coupon/Sale"
+                        },
+                        {
+                          "amount": "USD -0.49",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.98",
+                      "originalTotalPricePaid": "USD 4.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111050159"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111065056",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Wild Caught Medium Raw Gulf Shrimp Peeled & Deveined Tail Off",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111065056",
+                      "customerFacingSize": "12 ounces"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 8.99",
+                      "unitPricePaid": "USD 8.99",
+                      "totalPricePaid": "USD 17.98",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 17.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111065056"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004132",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Small Gala Apple \u2013 Each",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004132",
+                      "customerFacingSize": "1 each"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.75",
+                      "unitPricePaid": "USD 0.75",
+                      "totalPricePaid": "USD 1.50",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.50"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004132"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022304109",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms Mediterranean Crunch Chopped Salad Kit",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022304109",
+                      "customerFacingSize": "11 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.67",
+                      "totalPricePaid": "USD 11.00",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        },
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        },
+                        {
+                          "amount": "USD -1.33",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 3.97",
+                      "originalTotalPricePaid": "USD 14.97"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 3,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 3
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022304109"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004067",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Zucchini",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004067",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.79",
+                      "unitPricePaid": "USD 1.79",
+                      "totalPricePaid": "USD 1.00",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.00"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.56,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004067"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 14,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 48.44",
+                  "lastFourOfCard": "0256",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-27~514~551237",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-27T17:37:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "514",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (14 items)",
+                    "amount": "USD 53.99"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -5.55",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.60"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.49"
+                      },
+                      {
+                        "id": "2",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.49"
+                      },
+                      {
+                        "id": "3",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "4",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "5",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.33"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.00"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 48.44"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 93.45",
+                "totalTax": "USD 2.10",
+                "itemSalesAndCouponSavings": "USD 5.97",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 97.32",
+                "savings": "USD 5.97",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0007680853360",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Barilla Protein+ (Plus) Penne Pasta Non-GMO and Kosher Certified Plant Based Protein Pasta",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007680853360",
+                      "customerFacingSize": "14.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.99",
+                      "unitPricePaid": "USD 2.79",
+                      "totalPricePaid": "USD 2.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.20",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.20",
+                      "originalTotalPricePaid": "USD 2.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007680853360"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004562",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Carrots",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004562",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.49",
+                      "unitPricePaid": "USD 1.49",
+                      "totalPricePaid": "USD 1.18",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.18"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.79,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004562"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007098205193",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Clorox Covered Toilet Bowl Brush - Blue/White",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007098205193",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.24",
+                      "unitPricePaid": "USD 6.24",
+                      "totalPricePaid": "USD 6.24",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 6.24"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007098205193"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0081002120021",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Dr. Teal's\u00ae Kids Melatonin & Essential Oils 3-In-1 Bubble Bath Shampoo & Body Wash",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0081002120021",
+                      "customerFacingSize": "20 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0081002120021"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004023",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Fresh California Seedless Red Grapes",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004023",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.79",
+                      "unitPricePaid": "USD 2.79",
+                      "totalPricePaid": "USD 5.86",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.86"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 2.1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004023"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004608",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Garlic",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004608",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.50",
+                      "unitPricePaid": "USD 0.50",
+                      "totalPricePaid": "USD 1.00",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.00"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004608"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111011739",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "GARLIC POWDER - SMART WAY - 2 OZ",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111011739",
+                      "customerFacingSize": "2 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.25",
+                      "unitPricePaid": "USD 1.25",
+                      "totalPricePaid": "USD 1.25",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.25"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111011739"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004612",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Ginger Root",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004612",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.70",
+                      "unitPricePaid": "USD 3.70",
+                      "totalPricePaid": "USD 0.37",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.37"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004612"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111050532",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Pepper Jack Sliced Cheese",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111050532",
+                      "customerFacingSize": "16 slices / 12 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.00",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.00",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111050532"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007301072160",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "L. Liners for Women Organic Cotton Top Layer Regular Coverage Pantiliners",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007301072160",
+                      "customerFacingSize": "60 count"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 8.99",
+                      "unitPricePaid": "USD 8.99",
+                      "totalPricePaid": "USD 8.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 8.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007301072160"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004473807231",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Mae Ploy\u2122 Sweet Chili Sauce",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004473807231",
+                      "customerFacingSize": "12 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 3.69",
+                      "totalPricePaid": "USD 3.69",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.30",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.30",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004473807231"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004178599888",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "O-Cedar\u00ae Playtex Living Medium Gloves",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004178599888",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.49",
+                      "unitPricePaid": "USD 4.49",
+                      "totalPricePaid": "USD 4.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 4.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004178599888"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111011746",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "ONION POWDER - SMART WAY - 1.75 OZ",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111011746",
+                      "customerFacingSize": "1.75 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.25",
+                      "unitPricePaid": "USD 1.25",
+                      "totalPricePaid": "USD 1.25",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.25"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111011746"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004154800003",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Outshine Pineapple, Watermelon, and Mango Mini Fruit Pops, Variety Pack, 12 Count",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004154800003",
+                      "customerFacingSize": "12 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.49",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 6.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004154800003"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004072",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Russet Potato",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004072",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.89",
+                      "unitPricePaid": "USD 0.89",
+                      "totalPricePaid": "USD 0.93",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.93"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 1.04,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004072"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007294571589",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Sara Lee Delightful Honey Whole Wheat Bread",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007294571589",
+                      "customerFacingSize": "20 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.19",
+                      "unitPricePaid": "USD 5.19",
+                      "totalPricePaid": "USD 10.38",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 10.38"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007294571589"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111091659",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Cut and Peeled Baby Carrots Bag",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111091659",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.99",
+                      "unitPricePaid": "USD 1.99",
+                      "totalPricePaid": "USD 1.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111091659"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111009533",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Honey Mustard",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111009533",
+                      "customerFacingSize": "12 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.49",
+                      "unitPricePaid": "USD 2.49",
+                      "totalPricePaid": "USD 2.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 2.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111009533"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004132",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Small Gala Apple \u2013 Each",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004132",
+                      "customerFacingSize": "1 each"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.75",
+                      "unitPricePaid": "USD 0.75",
+                      "totalPricePaid": "USD 1.50",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.50"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004132"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111011751",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Smart Way\u2122 Italian Seasoning",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111011751",
+                      "customerFacingSize": "0.60 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.25",
+                      "unitPricePaid": "USD 1.25",
+                      "totalPricePaid": "USD 1.25",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.25"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111011751"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111011752",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Smart Way\u2122 Oregano Leaves",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111011752",
+                      "customerFacingSize": "0.63 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.25",
+                      "unitPricePaid": "USD 1.25",
+                      "totalPricePaid": "USD 1.25",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.25"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111011752"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004641211892",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Sprayco Plain Sprayer",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004641211892",
+                      "customerFacingSize": "32 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.79",
+                      "unitPricePaid": "USD 2.79",
+                      "totalPricePaid": "USD 2.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 2.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004641211892"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022304109",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms Mediterranean Crunch Chopped Salad Kit",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022304109",
+                      "customerFacingSize": "11 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.67",
+                      "totalPricePaid": "USD 3.67",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.32",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022304109"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022304218",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms Ultimate Caesar Salad Kit 11.4 oz",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022304218",
+                      "customerFacingSize": "11.4 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.67",
+                      "totalPricePaid": "USD 7.33",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        },
+                        {
+                          "amount": "USD -1.33",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 2.65",
+                      "originalTotalPricePaid": "USD 9.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022304218"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003010010055",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Town House\u00ae Original Crackers",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003010010055",
+                      "customerFacingSize": "13.8 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.79",
+                      "unitPricePaid": "USD 4.79",
+                      "totalPricePaid": "USD 4.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 4.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003010010055"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004067",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Zucchini",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004067",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.80",
+                      "unitPricePaid": "USD 1.80",
+                      "totalPricePaid": "USD 0.90",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.90"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.5,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004067"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 30,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 93.45",
+                  "lastFourOfCard": "0256",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-16~510~1401753",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-16T22:53:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "510",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (30 items)",
+                    "amount": "USD 97.32"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -5.97",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.20"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.00"
+                      },
+                      {
+                        "id": "2",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.30"
+                      },
+                      {
+                        "id": "3",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "4",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "5",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "6",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.33"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 2.10"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 93.45"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 122.47",
+                "totalTax": "USD 0.58",
+                "itemSalesAndCouponSavings": "USD 8.46",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 130.35",
+                "savings": "USD 8.46",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0001356212772",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Annie's\u2122 Organic Variety Pack Bunny Fruit\u2122 Flavored Snacks",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001356212772",
+                      "customerFacingSize": "22 ct / 0.7 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 11.49",
+                      "unitPricePaid": "USD 11.49",
+                      "totalPricePaid": "USD 11.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 11.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001356212772"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003760410305",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Apple Wedger",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003760410305"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.99",
+                      "unitPricePaid": "USD 6.99",
+                      "totalPricePaid": "USD 6.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 6.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003760410305"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0074236526502",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Horizon Organic Growing Years Whole Milk for Kids",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0074236526502",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 7.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0074236526502"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004093",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Jumbo Yellow Onions",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004093",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.99",
+                      "unitPricePaid": "USD 0.99",
+                      "totalPricePaid": "USD 1.42",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.42"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 1.43,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004093"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001862711599",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kashi Honey Toasted Cereal",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001862711599",
+                      "customerFacingSize": "13.6 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001862711599"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003335707101",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kewpie Mayonnaise",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003335707101",
+                      "customerFacingSize": "15.72 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.99",
+                      "unitPricePaid": "USD 6.99",
+                      "totalPricePaid": "USD 6.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 6.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003335707101"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004139000002",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kikkoman\u00ae Soy Sauce",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004139000002",
+                      "customerFacingSize": "10 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.99",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 2.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004139000002"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111015344",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Jasmine Rice",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111015344",
+                      "customerFacingSize": "10 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 14.99",
+                      "unitPricePaid": "USD 14.99",
+                      "totalPricePaid": "USD 14.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 14.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111015344"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111014183",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Non Stick Baking Spray",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111014183",
+                      "customerFacingSize": "6 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.59",
+                      "unitPricePaid": "USD 2.59",
+                      "totalPricePaid": "USD 2.59",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 2.59"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111014183"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111058720",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Pepper Jack Sliced Cheese",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111058720",
+                      "customerFacingSize": "8 slices / 6 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 2.49",
+                      "unitPricePaid": "USD 2.00",
+                      "totalPricePaid": "USD 2.00",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.49",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.49",
+                      "originalTotalPricePaid": "USD 2.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111058720"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111089301",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Salted Butter Sticks",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111089301",
+                      "customerFacingSize": "4 sticks / 16 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111089301"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111089305",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Unsalted Butter Sticks",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111089305",
+                      "customerFacingSize": "4 sticks / 16 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111089305"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007889530001",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Lee Kum Kee Panda Oyster Sauce",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007889530001",
+                      "customerFacingSize": "9 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007889530001"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004800171127",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Maizena\u00ae Corn Starch",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004800171127",
+                      "customerFacingSize": "14.1 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.99",
+                      "unitPricePaid": "USD 1.99",
+                      "totalPricePaid": "USD 1.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004800171127"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007321400607",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Mezzetta Sun-Ripened Dried Tomatoes",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007321400607",
+                      "customerFacingSize": "8 oz."
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007321400607"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111084716",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Unbleached All-Purpose Flour",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111084716",
+                      "customerFacingSize": "5 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.79",
+                      "unitPricePaid": "USD 5.79",
+                      "totalPricePaid": "USD 5.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111084716"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111010813",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth\u00ae Buttermilk Vanilla Protein Waffles",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111010813",
+                      "customerFacingSize": "10 ct / 13.4 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 4.99",
+                      "totalPricePaid": "USD 4.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111010813"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111012673",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth\u00ae Organic 100% Juice Pomegranate Juice Bottle",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111012673",
+                      "customerFacingSize": "32 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 4.49",
+                      "totalPricePaid": "USD 4.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        },
+                        {
+                          "amount": "USD -1.00",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.50",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111012673"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004132",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Small Gala Apple \u2013 Each",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004132",
+                      "customerFacingSize": "1 each"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.75",
+                      "unitPricePaid": "USD 0.75",
+                      "totalPricePaid": "USD 1.50",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.50"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004132"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111011748",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Smart Way\u2122 Ground Cinnamon",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111011748",
+                      "customerFacingSize": "1.94 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.25",
+                      "unitPricePaid": "USD 1.25",
+                      "totalPricePaid": "USD 1.25",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.25"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111011748"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022306099",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms Mexican St Corn Chopped Salad Kit",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022306099",
+                      "customerFacingSize": "11.62 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.66",
+                      "totalPricePaid": "USD 3.66",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.33",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.33",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022306099"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022304218",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms Ultimate Caesar Salad Kit 11.4 oz",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022304218",
+                      "customerFacingSize": "11.4 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.67",
+                      "totalPricePaid": "USD 3.67",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.32",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022304218"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003022306248",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Taylor Farms\u00ae Honey Balsamic Salad Kit",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003022306248",
+                      "customerFacingSize": "8.3 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 3.67",
+                      "totalPricePaid": "USD 3.67",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.32",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.32",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003022306248"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0008903644280",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Torani Sugar Free Vanilla Syrup",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0008903644280",
+                      "customerFacingSize": "12.7 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0008903644280"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0072225207112",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Zbar Oat Bites Iced Oatmeal Cookie Baked Oat Energy Granola Bites",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0072225207112",
+                      "customerFacingSize": "6 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.99",
+                      "unitPricePaid": "USD 5.49",
+                      "totalPricePaid": "USD 5.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.50",
+                      "originalTotalPricePaid": "USD 6.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0072225207112"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 26,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 122.47",
+                  "lastFourOfCard": "0256",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-10-05~514~871809",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-10-05T23:09:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "514",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (26 items)",
+                    "amount": "USD 130.35"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -8.46",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.49"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "2",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "3",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "4",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.00"
+                      },
+                      {
+                        "id": "5",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.33"
+                      },
+                      {
+                        "id": "6",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "7",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.32"
+                      },
+                      {
+                        "id": "8",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.50"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.58"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 122.47"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 31.94",
+                "totalTax": "USD 0.49",
+                "itemSalesAndCouponSavings": "USD 0.00",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 31.45",
+                "savings": "USD 0.00",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0007189903746",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Blue Bell\u00ae The Great Divide\u00ae Ice Cream Tub",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007189903746",
+                      "customerFacingSize": "64 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 9.49",
+                      "unitPricePaid": "USD 9.49",
+                      "totalPricePaid": "USD 9.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 9.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007189903746"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007675304017",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "GoodCook\u00ae Everyday Nonstick Steel Square Pan",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007675304017",
+                      "customerFacingSize": "8 in x 8 in x 2.25 in"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007675304017"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0074236526502",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Horizon Organic Growing Years Whole Milk for Kids",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0074236526502",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 7.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0074236526502"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111007367",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Mini Semi-Sweet Chocolate Chips",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111007367",
+                      "customerFacingSize": "10 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111007367"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111007377",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Semi Sweet Chocolate Baking Chips",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111007377",
+                      "customerFacingSize": "12 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111007377"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 5,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 31.94",
+                  "lastFourOfCard": "0256",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-28~510~1061549",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-28T20:49:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "510",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (5 items)",
+                    "amount": "USD 31.45"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.49"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 31.94"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 26.91",
+                "totalTax": "USD 0.59",
+                "itemSalesAndCouponSavings": "USD 0.80",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 27.12",
+                "savings": "USD 0.80",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0003384400107",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Badia\u00ae Crushed Red Pepper",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003384400107",
+                      "customerFacingSize": "4.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.29",
+                      "unitPricePaid": "USD 3.29",
+                      "totalPricePaid": "USD 3.29",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.29"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003384400107"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0060777245863",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Bakery Crafts Glitter Green 0 Birthday Candle",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0060777245863",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.79",
+                      "unitPricePaid": "USD 1.79",
+                      "totalPricePaid": "USD 3.58",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.58"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0060777245863"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0060777245780",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Bakery Crafts Glitter Green 2 Birthday Candle",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0060777245780",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.79",
+                      "unitPricePaid": "USD 1.79",
+                      "totalPricePaid": "USD 1.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0060777245780"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0060777245791",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Bakery Crafts Glitter Green 3 Birthday Candle",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0060777245791",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.79",
+                      "unitPricePaid": "USD 1.79",
+                      "totalPricePaid": "USD 1.79",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0060777245791"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0002862118348",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "FARMHOUSE EGGS Large Brown Cage Free Eggs, 18 Count",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0002862118348",
+                      "customerFacingSize": "18 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.29",
+                      "unitPricePaid": "USD 6.49",
+                      "totalPricePaid": "USD 6.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.80",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.80",
+                      "originalTotalPricePaid": "USD 7.29"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0002862118348"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007294571589",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Sara Lee Delightful Honey Whole Wheat Bread",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007294571589",
+                      "customerFacingSize": "20 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.19",
+                      "unitPricePaid": "USD 5.19",
+                      "totalPricePaid": "USD 5.19",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.19"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007294571589"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111042850",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Vitamin D Whole Milk Half Gallon",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111042850",
+                      "customerFacingSize": "1/2 gal"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.19",
+                      "unitPricePaid": "USD 4.19",
+                      "totalPricePaid": "USD 4.19",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 4.19"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111042850"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 8,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 26.91",
+                  "lastFourOfCard": "1864",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-09~512~611118",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-09T16:18:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "512",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (8 items)",
+                    "amount": "USD 27.12"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -0.80",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.80"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.59"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 26.91"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 39.24",
+                "totalTax": "USD 0.00",
+                "itemSalesAndCouponSavings": "USD 3.00",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 42.24",
+                "savings": "USD 3.00",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0000000004562",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Carrots",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004562",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.50",
+                      "unitPricePaid": "USD 1.50",
+                      "totalPricePaid": "USD 0.60",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.60"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.4,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004562"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111089301",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Salted Butter Sticks",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111089301",
+                      "customerFacingSize": "4 sticks / 16 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111089301"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111089305",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Unsalted Butter Sticks",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111089305",
+                      "customerFacingSize": "4 sticks / 16 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 2.99",
+                      "totalPricePaid": "USD 2.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111089305"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004072",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Russet Potato",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004072",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.89",
+                      "unitPricePaid": "USD 0.89",
+                      "totalPricePaid": "USD 0.72",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.72"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.81,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004072"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111061348",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Clamshell Seedless Red Grapes",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111061348",
+                      "customerFacingSize": "2 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -2.00",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 2.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111061348"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111012673",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth\u00ae Organic 100% Juice Pomegranate Juice Bottle",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111012673",
+                      "customerFacingSize": "32 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.99",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 5.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111012673"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111018276",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth\u00ae Unshelled Roasted & Salted Pistachios",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111018276",
+                      "customerFacingSize": "12 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 10.99",
+                      "unitPricePaid": "USD 10.99",
+                      "totalPricePaid": "USD 10.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 10.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111018276"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004850001830",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Tropicana Pure Premium 100% Orange Juice, No Pulp with Calcium and Vitamin D",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004850001830",
+                      "customerFacingSize": "89 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 8.29",
+                      "unitPricePaid": "USD 8.29",
+                      "totalPricePaid": "USD 8.29",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 8.29"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004850001830"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004067",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Zucchini",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004067",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.79",
+                      "unitPricePaid": "USD 1.79",
+                      "totalPricePaid": "USD 0.68",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 0.68"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 0.38,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004067"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 9,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 39.24",
+                  "lastFourOfCard": "1864",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-07~502~701629",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-07T21:29:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "502",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (9 items)",
+                    "amount": "USD 42.24"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -3.00",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "2",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -2.00"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.00"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 39.24"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 20.37",
+                "totalTax": "USD 0.00",
+                "itemSalesAndCouponSavings": "USD 0.00",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 20.37",
+                "savings": "USD 0.00",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0004440010270",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Gorton\u2019s Crunchy Breaded Fish Sticks Cut from Real Fish, Crunchy Panko Breadcrumbs, Frozen",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004440010270",
+                      "customerFacingSize": "44 ct / 24.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 9.99",
+                      "unitPricePaid": "USD 9.99",
+                      "totalPricePaid": "USD 9.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 9.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004440010270"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0007294571589",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Sara Lee Delightful Honey Whole Wheat Bread",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0007294571589",
+                      "customerFacingSize": "20 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 5.19",
+                      "unitPricePaid": "USD 5.19",
+                      "totalPricePaid": "USD 10.38",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 10.38"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0007294571589"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 3,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 20.37",
+                  "lastFourOfCard": "1864",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-01~511~641219",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-01T17:19:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "511",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (3 items)",
+                    "amount": "USD 20.37"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.00"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 20.37"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 24.87",
+                "totalTax": "USD 0.00",
+                "itemSalesAndCouponSavings": "USD 0.80",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 25.67",
+                "savings": "USD 0.80",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0074236526502",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Horizon Organic Growing Years Whole Milk for Kids",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0074236526502",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 15.98",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 15.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0074236526502"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004410019093",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Planet Oat Unsweetened Extra Creamy Oatmilk, 52 oz",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004410019093",
+                      "customerFacingSize": "52 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.69",
+                      "unitPricePaid": "USD 3.69",
+                      "totalPricePaid": "USD 3.69",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.69"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004410019093"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004072",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Russet Potato",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004072",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.79",
+                      "unitPricePaid": "USD 0.79",
+                      "totalPricePaid": "USD 1.21",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.21"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 1.53,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004072"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0003010010055",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Town House\u00ae Original Crackers",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0003010010055",
+                      "customerFacingSize": "13.8 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.79",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.80",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.80",
+                      "originalTotalPricePaid": "USD 4.79"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0003010010055"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 5,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 24.87",
+                  "lastFourOfCard": "1864",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-08-27~512~410835",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-08-27T13:35:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Northgate Hills",
+                "address": {
+                  "addressLines": [
+                    "3612 N Belt Line Rd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Northgate Hills",
+                  "postalCode": "75062",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.855108,
+                  "lng": -96.9908465
+                }
+              },
+              "terminalNumber": "512",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (5 items)",
+                    "amount": "USD 25.67"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -0.80",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.80"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.00"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 24.87"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 52.75",
+                "totalTax": "USD 0.00",
+                "itemSalesAndCouponSavings": "USD 2.00",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 54.75",
+                "savings": "USD 2.00",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0074236526502",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Horizon Organic Growing Years Whole Milk for Kids",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0074236526502",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 7.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0074236526502"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0060265226085",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "KIND Chocolate Chip Chewy Granola Bars",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0060265226085",
+                      "customerFacingSize": "10 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 6.49",
+                      "unitPricePaid": "USD 5.99",
+                      "totalPricePaid": "USD 5.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.50",
+                      "originalTotalPricePaid": "USD 6.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0060265226085"
+                  },
+                  "monetizationInfo": {
+                    "adId": "KO_us-east1_57bb9a34-1cad-4ea9-95be-cd1c4796987f",
+                    "adPosition": 0
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111082556",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Lactose Free 2% Reduced Fat Milk Half Gallon",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111082556",
+                      "customerFacingSize": "1/2 gal"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 3.49",
+                      "totalPricePaid": "USD 3.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111082556"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111064980",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Small Shrimp Raw Peeled & Deveined Tail Off",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111064980",
+                      "customerFacingSize": "12 ounces"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 7.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111064980"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0000000004072",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Russet Potato",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0000000004072",
+                      "unitOfMeasure": "lbs",
+                      "customerFacingSize": "1 lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 0.79",
+                      "unitPricePaid": "USD 0.79",
+                      "totalPricePaid": "USD 1.52",
+                      "hasEstimatedUnitPricePaid": true,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.52"
+                    },
+                    "isWeighted": true,
+                    "quantityInfo": {
+                      "received": 1.93,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0000000004072"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0082951531039",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Sensible Portions\u00ae Garden Veggie Straws\u00ae Multipack",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0082951531039",
+                      "customerFacingSize": "10 ct / 0.75 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 9.99",
+                      "unitPricePaid": "USD 9.99",
+                      "totalPricePaid": "USD 9.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 9.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0082951531039"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0081692502289",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "SKINNYPOP Original Popcorn Bags",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0081692502289",
+                      "customerFacingSize": ".5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 8.99",
+                      "unitPricePaid": "USD 7.49",
+                      "totalPricePaid": "USD 7.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -1.50",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 1.50",
+                      "originalTotalPricePaid": "USD 8.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0081692502289"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0004850001830",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Tropicana Pure Premium 100% Orange Juice, No Pulp with Calcium and Vitamin D",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0004850001830",
+                      "customerFacingSize": "89 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 8.29",
+                      "unitPricePaid": "USD 8.29",
+                      "totalPricePaid": "USD 8.29",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 8.29"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0004850001830"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 8,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 52.75",
+                  "lastFourOfCard": "0256",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-08-10~514~641708",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-08-10T22:08:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Las Colinas",
+                "address": {
+                  "addressLines": [
+                    "7505 N Macarthur Blvd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Las Colinas",
+                  "postalCode": "75063",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.908531,
+                  "lng": -96.960932
+                }
+              },
+              "terminalNumber": "514",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (8 items)",
+                    "amount": "USD 54.75"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -2.00",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.50"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -1.50"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.00"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 52.75"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            },
+            {
+              "costSummary": {
+                "total": "USD 45.94",
+                "totalTax": "USD 0.44",
+                "itemSalesAndCouponSavings": "USD 2.89",
+                "feeOriginal": "USD 0.00",
+                "feePaid": "USD 0.00",
+                "feeSavings": "USD 0.00",
+                "coupons": [],
+                "couponTotal": "USD 0.00",
+                "otherFees": [],
+                "otherFeeTotal": "USD 0.00",
+                "subTotal": "USD 48.39",
+                "savings": "USD 2.89",
+                "boostSavings": "USD 0.00",
+                "alcoholSubTotal": "USD 0.00"
+              },
+              "items": [
+                {
+                  "purchasedData": {
+                    "upc": "0081326702007",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "a2 Milk 2% Reduced Fat\u00a0Milk, 59 oz.",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0081326702007",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.99",
+                      "unitPricePaid": "USD 4.99",
+                      "totalPricePaid": "USD 4.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 4.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0081326702007"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0088877704607",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Everday Living\u00ae Bamboo Skewers",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0088877704607",
+                      "customerFacingSize": "100 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 1.40",
+                      "totalPricePaid": "USD 1.40",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -2.09",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 2.09",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0088877704607"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0002862118348",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "FARMHOUSE EGGS Large Brown Cage Free Eggs, 18 Count",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0002862118348",
+                      "customerFacingSize": "18 ct"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.29",
+                      "unitPricePaid": "USD 6.49",
+                      "totalPricePaid": "USD 6.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [
+                        {
+                          "amount": "USD -0.80",
+                          "description": "Item Coupon/Sale"
+                        }
+                      ],
+                      "totalSavings": "USD 0.80",
+                      "originalTotalPricePaid": "USD 7.29"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0002862118348"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0074236526502",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Horizon Organic Growing Years Whole Milk for Kids",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0074236526502",
+                      "customerFacingSize": "59 fl oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 7.99",
+                      "unitPricePaid": "USD 7.99",
+                      "totalPricePaid": "USD 7.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 7.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0074236526502"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0006211095550",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Jus-Rol\u2122 Puff Pastry Refrigerated Dough",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0006211095550",
+                      "customerFacingSize": "13.2 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 4.49",
+                      "unitPricePaid": "USD 4.49",
+                      "totalPricePaid": "USD 8.98",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 8.98"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0006211095550"
+                  },
+                  "monetizationInfo": {
+                    "adId": "KO_us-east1_91c5b474-0264-4069-a048-34b0615b8f69",
+                    "adPosition": 0
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111089866",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kro White Whl Wheat Flour 5 LB",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111089866",
+                      "customerFacingSize": "5lb"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.49",
+                      "unitPricePaid": "USD 3.49",
+                      "totalPricePaid": "USD 3.49",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.49"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111089866"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111050315",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Kroger\u00ae Heavy Whipping Cream Pint",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111050315",
+                      "customerFacingSize": "1 pt"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.29",
+                      "unitPricePaid": "USD 3.29",
+                      "totalPricePaid": "USD 6.58",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 6.58"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 2,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 2
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111050315"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001090076001",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Reynolds Kitchens Unbleached Parchment Paper Roll",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001090076001",
+                      "customerFacingSize": "45 sq ft"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 3.99",
+                      "unitPricePaid": "USD 3.99",
+                      "totalPricePaid": "USD 3.99",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 3.99"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001090076001"
+                  }
+                },
+                {
+                  "purchasedData": {
+                    "upc": "0001111088857",
+                    "itemType": "NORMAL",
+                    "isGiftCard": false,
+                    "displayInfo": {
+                      "description": "Simple Truth Organic\u00ae Diced Tomatoes in Tomato Juice",
+                      "imageUrl": "https://www.kroger.com/product/images/small/front/0001111088857",
+                      "customerFacingSize": "14.5 oz"
+                    },
+                    "pricingInfo": {
+                      "originalUnitPrice": "USD 1.59",
+                      "unitPricePaid": "USD 1.59",
+                      "totalPricePaid": "USD 1.59",
+                      "hasEstimatedUnitPricePaid": false,
+                      "priceModifiers": [],
+                      "totalSavings": "USD 0.00",
+                      "originalTotalPricePaid": "USD 1.59"
+                    },
+                    "isWeighted": false,
+                    "quantityInfo": {
+                      "received": 1,
+                      "notReceived": 0,
+                      "substitutes": 0,
+                      "addAllToCart": 1
+                    }
+                  },
+                  "catalogData": {
+                    "upc": "0001111088857"
+                  }
+                }
+              ],
+              "loyaltyCard": "481142789815",
+              "numberOfItems": 11,
+              "orderStatus": "COMPLETED",
+              "isRefundable": false,
+              "paymentDetails": [
+                {
+                  "paymentMethodName": "VISA",
+                  "paymentAmount": "USD 45.94",
+                  "lastFourOfCard": "1864",
+                  "cardTransactionType": "VISA",
+                  "emvRequired": true
+                }
+              ],
+              "purchaseId": {
+                "receiptId": "00000~00000~2026-09-07~4~511709",
+                "fulfillmentId": {
+                  "redacted": true
+                }
+              },
+              "purchaseType": "IN_STORE",
+              "receiptCreateDateTime": {
+                "value": "2026-09-07T22:09:00Z",
+                "timezone": "UTC"
+              },
+              "storeInfo": {
+                "vanityName": "Las Colinas",
+                "address": {
+                  "addressLines": [
+                    "7505 N Macarthur Blvd"
+                  ],
+                  "cityTown": "Irving",
+                  "name": "Las Colinas",
+                  "postalCode": "75063",
+                  "stateProvince": "TX",
+                  "residential": false,
+                  "countryCode": "US"
+                },
+                "location": {
+                  "lat": 32.908531,
+                  "lng": -96.960932
+                }
+              },
+              "terminalNumber": "4",
+              "bannerKey": "kroger",
+              "commonPaymentSummary": {
+                "lines": [
+                  {
+                    "type": "SUBTOTAL",
+                    "description": "Subtotal (11 items)",
+                    "amount": "USD 48.39"
+                  },
+                  {
+                    "type": "COUPONS",
+                    "description": "Coupons",
+                    "amount": "USD -2.89",
+                    "nestedLines": [
+                      {
+                        "id": "0",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -2.09"
+                      },
+                      {
+                        "id": "1",
+                        "type": "COUPON",
+                        "description": "Item Coupon/Sale",
+                        "amount": "USD -0.80"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "TAX",
+                    "description": "Sales Tax",
+                    "amount": "USD 0.44"
+                  },
+                  {
+                    "type": "TOTAL",
+                    "description": "Total",
+                    "amount": "USD 45.94"
+                  },
+                  {
+                    "type": "REGULATORY_FEE",
+                    "description": "Regulatory Fees",
+                    "amount": "USD 0.00",
+                    "nestedLines": []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

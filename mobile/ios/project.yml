@@ -1,0 +1,117 @@
+name: FoodCapture
+options:
+  bundleIdPrefix: ai.commandcode.food
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  FoodCore:
+    path: FoodCore
+
+schemes:
+  FoodCapture:
+    build:
+      targets:
+        FoodCapture: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  FoodCaptureMac:
+    build:
+      targets:
+        FoodCaptureMac: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+targets:
+  FoodCapture:
+    type: application
+    platform: iOS
+    sources:
+      - path: FoodCapture
+        excludes:
+          - Info.plist
+          - Info-macOS.plist
+    dependencies:
+      - package: FoodCore
+    postBuildScripts:
+      # A device build can't read the repo or your shell env, so bundle the gitignored
+      # Secrets.env (if present) next to the app binary. Debug only: a Release/archive build
+      # must never ship the developer's keys inside the .ipa. No secrets live in the repo.
+      - name: Copy local secrets
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$CONFIGURATION" = "Debug" ] && [ -f "$SRCROOT/Secrets.env" ]; then
+            cp "$SRCROOT/Secrets.env" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Secrets.env"
+          fi
+    info:
+      path: FoodCapture/Info.plist
+      properties:
+        CFBundleDisplayName: Food Capture
+        CFBundleShortVersionString: "0.1.0"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleURLTypes:
+          - CFBundleURLName: ai.commandcode.food.capture
+            CFBundleURLSchemes:
+              - foodcapture
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.commandcode.food.capture
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        # Sign with the user's team so physical-device runs work; the simulator ignores signing.
+        DEVELOPMENT_TEAM: 6H5AQ9JDNV
+        CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          CODE_SIGNING_ALLOWED: YES
+        Release:
+          CODE_SIGNING_ALLOWED: YES
+
+  FoodCaptureMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: FoodCapture
+        excludes:
+          - Info.plist
+          - Info-macOS.plist
+    dependencies:
+      - package: FoodCore
+    postBuildScripts:
+      - name: Copy local secrets
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ -f "$SRCROOT/Secrets.env" ]; then
+            cp "$SRCROOT/Secrets.env" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Secrets.env"
+          fi
+    info:
+      path: FoodCapture/Info-macOS.plist
+      properties:
+        CFBundleDisplayName: Food Capture
+        CFBundleShortVersionString: "0.1.0"
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: ""
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.commandcode.food.capture.mac
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        SDKROOT: macosx
+        SUPPORTED_PLATFORMS: macosx
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        # Local-only build: no team/profile needed to run on this Mac.
+        CODE_SIGNING_ALLOWED: NO

@@ -8,20 +8,26 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .. import db, inventory, llm
+from .. import config, db, inventory, llm, resolve
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-LOCATIONS = ["fridge", "freezer", "pantry", "counter"]
-CHAT_SYSTEM = (
-    "You are a helpful kitchen assistant with access to the user's current fridge, freezer "
-    "and pantry, rebuilt from their Kroger and Costco receipts. Answer questions about what "
-    "they have and what is about to go bad. Be concise and specific; prefer naming items and "
-    "the days left. If asked for recipes, use ingredients that expire soonest first."
+TEMPLATES.env.globals["relative"] = lambda days: _relative(days)
+# Brand for a row's second line, or "" when there's nothing useful to add — no brand, or a brand
+# the name already contains. Mirrors `ItemRow.brandText` in the Swift app.
+TEMPLATES.env.globals["brand_of"] = lambda name, brand: (
+    brand if brand and brand.lower() not in (name or "").lower() else ""
 )
+LOCATIONS = ["fridge", "freezer", "pantry", "counter"]
+# "Use soon" leads the dashboard: everything within this window, across every shelf. Mirrors
+# `AppModel.useSoonDays` in the Swift app so the phone and the web read the same.
+USE_SOON_DAYS = 7
+# A shelf longer than this starts collapsed; see `_shelf_collapsed`. Only the pantry ever hits it.
+COLLAPSE_THRESHOLD = 50
+CHAT_SYSTEM = config.SHARED_PROMPTS["chat"]
 
 app = FastAPI(title="Virtual Fridge & Pantry")
 
@@ -36,6 +42,22 @@ def _days_left(expires_on: str | None) -> int | None:
     if not expires_on:
         return None
     return (date.fromisoformat(expires_on) - date.today()).days
+
+
+def _relative(days: int | None) -> str:
+    """Human phrasing for a days-left value, mirroring `Chat.relative` in the Swift app so the
+    web dashboard and the phone read the same: today / tomorrow / in N days / N days past."""
+    if days is None:
+        return "no expiry"
+    if days < -1:
+        return f"{-days} days past"
+    if days == -1:
+        return "yesterday"
+    if days == 0:
+        return "today"
+    if days == 1:
+        return "tomorrow"
+    return f"in {days} days"
 
 
 def _shelves(conn) -> dict[str, list[dict]]:
@@ -62,26 +84,72 @@ def _snapshot(conn) -> str:
 
 
 @app.get("/")
-def index(request: Request, archived: int = 0):
+def index(request: Request, archived: int = 0, q: str = "", show: str = ""):
     conn = _conn()
     shelves = _shelves(conn)
-    soon = inventory.expiring_soon(conn, days=3)
+    soon = inventory.expiring_soon(conn, days=USE_SOON_DAYS)
     for r in soon:
         r["days_left"] = _days_left(r["expires_on"])
     extra = inventory.active(conn, include_archived=True) if archived else []
-    counts = {loc: len(v) for loc, v in shelves.items()}
     conn.close()
+
+    # "Use soon" leads: the shelf sections then show only what's left (beyond the horizon), so
+    # nothing appears twice and the dashboard reads as "act on these, browse the rest" — exactly
+    # like the phone's Kitchen tab.
+    soon_ids = {r["id"] for r in soon}
+    rest = {
+        loc: [r for r in rows if r["id"] not in soon_ids] for loc, rows in shelves.items()
+    }
+    totals = {loc: len(shelves.get(loc, [])) for loc in LOCATIONS}
+
+    # `show=<loc>` expands a long shelf (the pantry) on request.
+    expanded = {s for s in show.split(",") if s}
+
+    def collapsed(loc: str) -> bool:
+        return len(rest.get(loc, [])) >= COLLAPSE_THRESHOLD and loc not in expanded
+
+    # Search across all shelves by name / brand / category — the same fields the phone
+    # searches. When a query is present the shelves collapse into one result list.
+    needle = q.strip().lower()
+    results: list[dict] = []
+    if needle:
+        for row in shelves.values():
+            for r in row:
+                hay = " ".join(
+                    str(r.get(f) or "") for f in ("canonical_name", "brand", "category")
+                ).lower()
+                if needle in hay:
+                    results.append(r)
+
+    visible = {
+        loc: ([] if collapsed(loc) else rest.get(loc, [])) for loc in LOCATIONS
+    }
+    # Precompute the `show=` values for the expand/collapse links, so the template stays simple.
+    show_links = {
+        loc: ",".join(sorted(expanded | {loc})) for loc in LOCATIONS
+    }
+    hide_links = {
+        loc: ",".join(sorted(expanded - {loc})) for loc in LOCATIONS
+    }
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
-            "shelves": shelves,
+            "use_soon_days": USE_SOON_DAYS,
+            "shelves": visible,
+            "rest": rest,
             "locations": LOCATIONS,
             "soon": soon,
-            "counts": counts,
+            "counts": totals,
+            "collapsed": {loc: collapsed(loc) for loc in LOCATIONS},
+            "expanded": expanded,
+            "show_links": show_links,
+            "hide_links": hide_links,
             "archived": bool(archived),
             "archived_rows": [r for r in extra if r["status"] == "archived"][:100],
             "today": date.today().isoformat(),
+            "q": q,
+            "results": results,
         },
     )
 
@@ -92,6 +160,32 @@ def set_status(iid: int, status: str = Form(...)):
     inventory.set_status(conn, iid, status)
     conn.close()
     return RedirectResponse("/", status_code=303)
+
+
+@app.post("/item/{pid}/shelf-life")
+def set_shelf_life(pid: int, days: int = Form(...)):
+    if not 1 <= days <= 3650:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 3650")
+    conn = _conn()
+    applied = resolve.set_user_shelf_life(conn, pid, days)
+    inventory.refresh_status(conn)
+    conn.close()
+    if not applied:
+        raise HTTPException(status_code=404, detail="product not found")
+    return RedirectResponse(f"/item/{pid}", status_code=303)
+
+
+@app.post("/item/{pid}/review")
+def set_review(pid: int, clear: bool = Form(False)):
+    conn = _conn()
+    changed = (
+        resolve.clear_review(conn, pid) if clear else resolve.flag_for_review(conn, pid)
+    )
+    inventory.refresh_status(conn)
+    conn.close()
+    if not changed:
+        raise HTTPException(status_code=404, detail="product not found")
+    return RedirectResponse(f"/item/{pid}", status_code=303)
 
 
 @app.get("/item/{pid}")

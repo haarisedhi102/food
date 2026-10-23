@@ -1,0 +1,20 @@
+{
+  "day_criteria": {
+    "d0": "0 days (use today; already spoiled)",
+    "d1_2": "1-2 days (fresh fish, cut fruit, leftovers)",
+    "d3_4": "3-4 days (fresh bread, cooked rice, open deli meat)",
+    "d5_7": "5-7 days (fluid milk, yogurt, bananas on the counter)",
+    "d8_14": "8-14 days (bell peppers, tomatoes, opened cheese)",
+    "d15_30": "15-30 days (eggs, hard cheese, apples)",
+    "d31_90": "31-90 days (root vegetables, winter squash, unopened juice)",
+    "d91_180": "91-180 days (frozen meat, unopened shelf-stable items)",
+    "d181_365": "181-365 days (canned goods, dry staples)",
+    "d365p": "more than 365 days, or non-perishable"
+  },
+  "storage_criteria": {
+    "fridge": "Refrigerated.",
+    "freezer": "Frozen.",
+    "pantry": "Shelf-stable, dry, or canned.",
+    "counter": "Room-temperature counter, such as fresh produce or bread."
+  }
+}

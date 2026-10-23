@@ -95,6 +95,118 @@ def test_resolve_batch_reasks_for_an_item_the_model_omitted(monkeypatch):
     assert set(out) == {10, 11}
 
 
+def test_jev_high_confidence_skips_the_llm(monkeypatch):
+    conn = _mem()
+    monkeypatch.setattr(resolve.jev, "is_configured", lambda: True)
+
+    def fake_decide(state, questions):
+        return {
+            "model": "typesafe/jev-1.14-test",
+            "answers": {
+                "item_10_perishable": {"type": "noul", "noul": 0.95},
+                "item_10_storage": {
+                    "type": "choice",
+                    "choice": "pantry",
+                    "confidence": 0.95,
+                },
+                "item_10_days": {
+                    "type": "choice",
+                    "choice": "d15_30",
+                    "confidence": 0.95,
+                },
+                "item_10_candidate": {
+                    "type": "choice",
+                    "choice": "none",
+                    "confidence": 0.9,
+                },
+            },
+            "usage": {"input_tokens": 100, "output_tokens": 20},
+        }
+
+    monkeypatch.setattr(resolve.jev, "decide", fake_decide)
+    monkeypatch.setattr(resolve, "_research_agent", lambda: _FakeResearch())
+    monkeypatch.setattr(
+        resolve,
+        "_structured",
+        lambda: (_ for _ in ()).throw(AssertionError("LLM synthesis should not run")),
+    )
+
+    out = resolve.resolve_batch(
+        conn,
+        [
+            {
+                "id": 10,
+                "name": "Jumbo Yellow Onions",
+                "category": "Produce",
+                "storage": "pantry",
+            }
+        ],
+    )
+
+    assert out[10].source == "jev"
+    assert out[10].shelf_life_days == 30
+    assert out[10].storage == "pantry"
+    assert out[10].is_perishable is True
+
+
+def test_jev_low_confidence_is_still_terminal(monkeypatch):
+    conn = _mem()
+    monkeypatch.setattr(resolve.jev, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        resolve.jev,
+        "decide",
+        lambda state, questions: {
+            "answers": {
+                "item_10_perishable": {"type": "noul", "noul": 0.5},
+                "item_10_storage": {
+                    "type": "choice",
+                    "choice": "pantry",
+                    "confidence": 0.5,
+                },
+                "item_10_days": {
+                    "type": "choice",
+                    "choice": "d15_30",
+                    "confidence": 0.5,
+                },
+                "item_10_candidate": {
+                    "type": "choice",
+                    "choice": "none",
+                    "confidence": 0.5,
+                },
+            }
+        },
+    )
+    monkeypatch.setattr(resolve, "_research_agent", lambda: _FakeResearch())
+    monkeypatch.setattr(
+        resolve,
+        "_structured",
+        lambda: (_ for _ in ()).throw(AssertionError("no LLM after Jev")),
+    )
+
+    out = resolve.resolve_batch(conn, [{"id": 10, "name": "Jumbo Yellow Onions"}])
+
+    assert out[10].source == "jev"
+    # 15-30 is a wide bucket at 0.5 confidence: unknown is safer than 30 days.
+    assert out[10].shelf_life_days is None
+
+
+def test_rate_limit_is_not_retried(monkeypatch):
+    conn = _mem()
+    calls = {"n": 0}
+
+    class _RateLimitedResearch:
+        def invoke(self, payload):
+            calls["n"] += 1
+            raise RuntimeError("429 Too Many Requests")
+
+    monkeypatch.setattr(resolve, "_research_agent", lambda: _RateLimitedResearch())
+
+    out = resolve.resolve_batch(conn, [{"id": 10, "name": "Jumbo Yellow Onions"}])
+
+    assert out == {}
+    assert calls["n"] == 1
+
+
 def test_apply_keeps_the_model_number_for_a_foodkeeper_verdict():
     conn = _mem()
     conn.execute(

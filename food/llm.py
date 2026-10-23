@@ -1,10 +1,9 @@
 """LLM plumbing built on LangChain.
 
 Each configured model becomes a `ChatOpenAI` runnable. They are wrapped with `.with_retry`
-for transient failures and chained with `.with_fallbacks`, so a 429 or error transparently
-falls through to the next model and the caller sees a single runnable. Every call is
-recorded in `llm_calls` so per-purpose budgets can be enforced; chat/digest responses are
-cached in `prompt_cache`.
+for transient failures and chained with `.with_fallbacks`; a 429 is surfaced instead of
+being retried across models. Every call is recorded in `llm_calls` so per-purpose budgets
+can be enforced; chat/digest responses are cached in `prompt_cache`.
 """
 
 from __future__ import annotations
@@ -12,10 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from functools import lru_cache
 from typing import Any
 
+import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from openai import APIConnectionError, APITimeoutError, InternalServerError
 
 from . import config
 
@@ -70,38 +72,93 @@ def calls_today(conn: sqlite3.Connection, purpose: str | None = None) -> int:
     return row["n"]
 
 
-def chat_model(model: str | None = None, temperature: float = 0.0) -> ChatOpenAI:
-    """A bare ChatOpenAI. For callers that need a chat model rather than a chain (agents,
-    tool-calling)."""
+# One keep-alive pool for every chat call. Creating a ChatOpenAI per batch was doing a new
+# TLS handshake each time; this reuses connections across canonicalize and resolver calls.
+_HTTP = httpx.Client(
+    timeout=config.LLM_TIMEOUT_S,
+    limits=httpx.Limits(
+        max_connections=config.LLM_MAX_CONNECTIONS,
+        max_keepalive_connections=config.LLM_MAX_CONNECTIONS,
+    ),
+)
+
+
+@lru_cache(maxsize=None)
+def _chat_model_cached(model: str, temperature: float, max_tokens: int) -> ChatOpenAI:
     if not config.CMD_API_KEY:
         raise LLMError(
             "CMD_API_KEY is not set. Create one in Command Code Studio -> API keys and put it "
             "in .env as CMD_API_KEY=..."
         )
     return ChatOpenAI(
-        model=model or config.MODEL,
+        model=model,
         api_key=config.CMD_API_KEY,
         base_url=config.BASE_URL,
         temperature=temperature,
-        max_retries=2,
+        max_tokens=max_tokens,
+        timeout=config.LLM_TIMEOUT_S,
+        max_retries=0,
+        http_client=_HTTP,
     )
 
 
-def _model(model: str, temperature: float) -> ChatOpenAI:
-    return chat_model(model, temperature).with_retry(
-        stop_after_attempt=3, wait_exponential_jitter=True
+def chat_model(
+    model: str | None = None, temperature: float = 0.0, max_tokens: int | None = None
+) -> ChatOpenAI:
+    """A cached ChatOpenAI. For callers that need a chat model rather than a chain
+    (agents, tool-calling). The shared instance reuses the httpx connection pool."""
+    return _chat_model_cached(
+        model or config.MODEL, temperature, max_tokens or config.LLM_MAX_TOKENS
     )
 
 
-def _chain(models: list[str], temperature: float):
-    if not config.CMD_API_KEY:
-        raise LLMError(
-            "CMD_API_KEY is not set. Create one in Command Code Studio -> API keys and put it "
-            "in .env as CMD_API_KEY=..."
-        )
-    runs = [_model(m, temperature) for m in models]
+@lru_cache(maxsize=None)
+def _model_cached(model: str, temperature: float, max_tokens: int):
+    return chat_model(model, temperature, max_tokens).with_retry(
+        retry_if_exception_type=(APIConnectionError, APITimeoutError, InternalServerError),
+        stop_after_attempt=3,
+        wait_exponential_jitter=True,
+    )
+
+
+@lru_cache(maxsize=None)
+def _chain_cached(models: tuple[str, ...], temperature: float, max_tokens: int):
+    runs = [_model_cached(m, temperature, max_tokens) for m in models]
     primary, *rest = runs
-    return primary.with_fallbacks(rest) if rest else primary
+    if not rest:
+        return primary
+    # Fall back on transport/5xx errors, but not on a 429: retrying a rate limit across
+    # the same provider is exactly what we want to avoid.
+    return primary.with_fallbacks(
+        rest,
+        exceptions_to_handle=(APIConnectionError, APITimeoutError, InternalServerError),
+    )
+
+
+def _chain(models: list[str], temperature: float = 0.0):
+    return _chain_cached(tuple(models), temperature, config.LLM_MAX_TOKENS)
+
+
+def is_rate_limit_error(exc: BaseException) -> bool:
+    """True for HTTP 429 / provider rate limits, which we must not blindly retry."""
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        response = getattr(exc, "response", None)
+        status = getattr(response, "status_code", None)
+    if status == 429:
+        return True
+    text = str(exc).lower()
+    return "429" in text or "rate limit" in text or "too many requests" in text
+
+
+def retry_after_seconds(exc: BaseException) -> float | None:
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) or {}
+    value = headers.get("retry-after") or headers.get("Retry-After")
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _record(conn: sqlite3.Connection, purpose: str, msg: Any) -> None:

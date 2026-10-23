@@ -1,0 +1,41 @@
+{
+  "fileName": "test.xlsx",
+  "sheets": [
+    {
+      "name": "Category",
+      "data": [
+        [{"ID": 7.0}, {"Category_Name": "Dairy Products & Eggs"}, {"Subcategory_Name": null}],
+        [{"ID": 18.0}, {"Category_Name": "Produce"}, {"Subcategory_Name": "Fresh Fruits"}]
+      ]
+    },
+    {
+      "name": "Product",
+      "data": [
+        [
+          {"ID": 21.0}, {"Category_ID": 7.0}, {"Name": "Eggs"}, {"Name_subtitle": "in shell"},
+          {"Keywords": "Eggs,in shell,egg,shell"},
+          {"DOP_Refrigerate_Min": 3.0}, {"DOP_Refrigerate_Max": 5.0}, {"DOP_Refrigerate_Metric": "Weeks"},
+          {"Freeze_Metric": "Not Recommended"}
+        ],
+        [
+          {"ID": 27.0}, {"Category_ID": 7.0}, {"Name": "Milk"}, {"Name_subtitle": "plain or flavored"},
+          {"Keywords": "Milk,plain,flavored"},
+          {"Refrigerate_Metric": "Package use-by date"},
+          {"DOP_Freeze_Min": 3.0}, {"DOP_Freeze_Max": 3.0}, {"DOP_Freeze_Metric": "Months"}
+        ],
+        [
+          {"ID": 33.0}, {"Category_ID": 7.0}, {"Name": "Yogurt"}, {"Name_subtitle": null},
+          {"Keywords": "Yogurt"},
+          {"DOP_Refrigerate_Min": 1.0}, {"DOP_Refrigerate_Max": 2.0}, {"DOP_Refrigerate_Metric": "Weeks"},
+          {"Refrigerate_After_Opening_Min": 1.0}, {"Refrigerate_After_Opening_Max": 1.0},
+          {"Refrigerate_After_Opening_Metric": "Days"}
+        ],
+        [
+          {"ID": 294.0}, {"Category_ID": 18.0}, {"Name": "Onions"}, {"Name_subtitle": "yellow, white, red, etc."},
+          {"Keywords": "Onions,yellow, white, red"},
+          {"Pantry_Min": 1.0}, {"Pantry_Max": 1.0}, {"Pantry_Metric": "Months"}
+        ]
+      ]
+    }
+  ]
+}

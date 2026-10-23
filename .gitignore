@@ -1,7 +1,35 @@
-data/
-.env
-.commandcode/
+# Python
 *.pyc
 __pycache__/
 .venv/
 .pytest_cache/
+
+# Local data, secrets, tool config
+data/
+.env
+.commandcode/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Xcode / XcodeGen (project, plists and build output are generated)
+mobile/ios/*.xcodeproj/
+xcuserdata/
+*.xcuserstate
+mobile/ios/Secrets.env
+mobile/ios/FoodCapture/Info.plist
+mobile/ios/FoodCapture/Info-macOS.plist
+mobile/ios/build/
+mobile/ios/build-mac/
+mobile/ios/DerivedData/
+mobile/ios/*.xcresult
+mobile/ios/*-raw.json
+mobile/ios/mobile-session.json
+
+# Swift package build output (FoodCore)
+mobile/ios/FoodCore/.build/
+mobile/ios/FoodCore/.swiftpm/
+
+# Rust build output (Rig crate)
+mobile/ios/Rig/target/

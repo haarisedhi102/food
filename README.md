@@ -139,6 +139,33 @@ uv run food stock                      # build/refresh the fridge & pantry
   long-dead rows archive automatically. Mark items used/tossed from the dashboard to keep it
   honest.
 
+## Client-assisted ingest (mobile POC)
+
+Akamai doesn't only guard the *login* — it guards the *fetch*. Measured against the real
+endpoints, no headless HTTP client gets through Kroger's `purchase-history/v2/details`:
+`curl_cffi` (even with a Chrome TLS/JA3 + HTTP/2 fingerprint) has its HTTP/2 stream **reset**,
+and `node-libcurl` (with an explicit Akamai HTTP/2 fingerprint) fails in the framing layer —
+while the *very same request* from a real WebKit engine returns **200**. Akamai validates its
+`_abck` bot cookie against the browser's fingerprint, which no non-browser client reproduces.
+
+So the portable answer is to move the browser engine to the **client** and keep the server
+browser-free: the phone logs in and fetches, and hands the server raw payloads that the
+existing `food import` consumes unchanged.
+
+`mobile/ios/` is a SwiftUI POC that does exactly this. Its in-app `WKWebView` (a real WebKit
+engine, the same reason Google and Meta ship their own in-app browser) fetches the full
+history, then:
+
+```bash
+uv run food import kroger-raw.json --retailer kroger   # → 123 receipts, 1026 items
+uv run food import costco-raw.json --retailer costco   # →   4 receipts,   46 items
+```
+
+One quirk worth knowing: the details endpoint allows only ~1 batch per **page load** before it
+drops connections, and retries don't recover it — the app itemizes in chunks, reloading the
+page between them to re-arm the sensor (`loads=13 detailsOk=13 errors=0`). See
+[`mobile/ios/README.md`](mobile/ios/README.md); the same design ports to Android WebView.
+
 ## Privacy
 
 `data/` holds session cookies, raw receipts and purchase history. It is gitignored — keep it
